@@ -8,7 +8,7 @@ use crate::int::{UAddr, UGran, UGRAN_SIZE};
 
 /* TODO: implement sealed capabilities using metadata */
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct Address(pub UAddr);
 
@@ -33,6 +33,26 @@ impl Address {
 
     pub const fn is_aligned_to(self, align: Align) -> bool {
         self.get() % align.get() == 0
+    }
+}
+
+impl PartialEq for Address {
+    fn eq(&self, other: &Self) -> bool {
+        self.get() == other.get()
+    }
+}
+
+impl Eq for Address {}
+
+impl PartialOrd for Address {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.get().partial_cmp(&other.get())
+    }
+}
+
+impl Ord for Address {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.get().cmp(&other.get())
     }
 }
 

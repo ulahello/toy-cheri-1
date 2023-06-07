@@ -10,3 +10,6 @@ argh = "0.1.10"
 bitvec = "1.0.1"
 tracing = "0.1.38"
 tracing-subscriber = "0.3.17"
+
+[dev-dependencies]
+nanorand = { version = "0.7.0", default-features = false, features = ["pcg64"] }
