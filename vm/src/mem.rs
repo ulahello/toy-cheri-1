@@ -5,7 +5,7 @@ use bitvec::order::Lsb0;
 use tracing::{span, Level};
 
 use crate::access::{MemAccess, MemAccessKind};
-use crate::capability::{Address, Capability, Permissions, TaggedCapability};
+use crate::capability::{Address, Capability, Granule, Permissions, TaggedCapability};
 use crate::exception::Exception;
 use crate::int::{UAddr, UGran, UADDR_SIZE, UGRAN_SIZE, UNINIT};
 use crate::op::{Op, OpKind};
@@ -159,7 +159,7 @@ impl Memory {
         let data = self.read_ugran(src)?;
         let valid = self
             .tags
-            .read_addr(src.addr())
+            .read_gran(src.addr().gran())
             .expect("read succeeded so address is valid");
         Ok(TaggedCapability {
             capa: Capability::from_ugran(data),
@@ -177,7 +177,7 @@ impl Memory {
         /* now that we've written the data, we need to update the tag controller
          * to preserve validity of capability */
         self.tags
-            .write_addr(dst.addr(), tcap.is_valid())
+            .write_gran(dst.addr().gran(), tcap.is_valid())
             .expect("valid address must be present in tag controller");
         Ok(())
     }
@@ -260,25 +260,15 @@ impl TagController {
         Ok(Self { mem })
     }
 
-    pub fn read_gran(&self, gran: UAddr) -> Option<bool> {
+    pub fn read_gran(&self, gran: Granule) -> Option<bool> {
         let idx = Self::gran_to_idx(gran)?;
         Some(self.mem[idx])
     }
 
-    pub fn write_gran(&mut self, gran: UAddr, valid: bool) -> Option<()> {
+    pub fn write_gran(&mut self, gran: Granule, valid: bool) -> Option<()> {
         let idx = Self::gran_to_idx(gran)?;
         *self.mem.get_mut(idx).unwrap() = valid;
         Some(())
-    }
-
-    pub fn read_addr(&self, addr: Address) -> Option<bool> {
-        let gran = Self::addr_to_gran(addr);
-        self.read_gran(gran)
-    }
-
-    pub fn write_addr(&mut self, addr: Address, valid: bool) -> Option<()> {
-        let gran = Self::addr_to_gran(addr);
-        self.write_gran(gran, valid)
     }
 
     pub fn read_reg(&self, reg: u8) -> Option<bool> {
@@ -298,8 +288,8 @@ impl TagController {
 }
 
 impl TagController {
-    fn gran_to_idx(gran: UAddr) -> Option<usize> {
-        let idx = gran.checked_add(Registers::COUNT as _)?;
+    fn gran_to_idx(gran: Granule) -> Option<usize> {
+        let idx = gran.0.checked_add(Registers::COUNT as _)?;
         usize::try_from(idx).ok()
     }
 
@@ -309,9 +299,5 @@ impl TagController {
         } else {
             None
         }
-    }
-
-    const fn addr_to_gran(addr: Address) -> UAddr {
-        addr.get() / UGRAN_SIZE as UAddr
     }
 }

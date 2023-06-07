@@ -25,6 +25,10 @@ impl Address {
     pub const fn get(self) -> UAddr {
         self.0 & (UAddr::MAX >> (UAddr::BITS - Self::BITS as u32))
     }
+
+    pub const fn gran(self) -> Granule {
+        Granule(self.get() / UGRAN_SIZE as UAddr)
+    }
 }
 
 impl fmt::Display for Address {
@@ -40,7 +44,18 @@ impl fmt::Debug for Address {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(transparent)]
+pub struct Granule(pub UAddr);
+
+impl Granule {
+    pub const fn addr(self) -> Address {
+        // TODO: overflow
+        Address(self.0 * UGRAN_SIZE as UAddr)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Capability {
     pub(crate) addr: Address,
     start: Address,
@@ -146,7 +161,8 @@ impl Capability {
 /* TODO: this essentially describes a usize index into tag controller. it might
  * be dangerous to use this in api because the thing that this represents could
  * change behind its back. its like a reference but cached. */
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[must_use]
 pub struct TaggedCapability {
     pub(crate) capa: Capability,
     pub(crate) valid: bool,
