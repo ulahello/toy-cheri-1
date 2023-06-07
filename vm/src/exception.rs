@@ -28,8 +28,12 @@ impl fmt::Display for Exception {
             }
 
             Self::InvalidMemAccess { access } => {
-                write!(f, "invalid memory access ({kind}) of ", kind = access.kind)?;
-                // TODO: say what permissions the capability has
+                write!(
+                    f,
+                    "invalid memory access ({kind} of {perms}) of ",
+                    kind = access.kind,
+                    perms = access.tcap.perms()
+                )?;
                 if let Some(len) = access.len {
                     write!(
                         f,
