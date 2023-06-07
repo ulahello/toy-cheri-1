@@ -267,7 +267,7 @@ impl TagController {
 
     pub fn write_gran(&mut self, gran: Granule, valid: bool) -> Option<()> {
         let idx = Self::gran_to_idx(gran)?;
-        *self.mem.get_mut(idx).unwrap() = valid;
+        *self.mem.get_mut(idx)? = valid;
         Some(())
     }
 
