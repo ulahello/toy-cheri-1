@@ -1,5 +1,6 @@
 use core::fmt;
 
+use crate::abi::Align;
 use crate::capability::{Capability, TaggedCapability};
 use crate::exception::Exception;
 
@@ -22,6 +23,8 @@ pub enum OpKind {
 
 impl OpKind {
     pub const SIZE: u8 = 1;
+
+    pub const ALIGN: Align = Align::new(1).unwrap();
 
     pub const fn to_byte(self) -> u8 {
         self as u8
@@ -59,7 +62,10 @@ pub struct Op {
 impl Op {
     /* TODO: currently implemented as constant size, but variable size is more
      * memory efficient because not all args are always needed */
-    pub const SIZE: u8 = OpKind::SIZE + Capability::SIZE * 3;
+    // TODO(abi)
+    pub const SIZE: u8 = Capability::SIZE * 4;
+
+    pub const ALIGN: Align = Capability::ALIGN;
 
     pub const fn nop() -> Self {
         Self {

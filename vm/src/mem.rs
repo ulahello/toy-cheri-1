@@ -4,6 +4,7 @@ use bitvec::boxed::BitBox;
 use bitvec::order::Lsb0;
 use tracing::{span, Level};
 
+use crate::abi::Align;
 use crate::access::{MemAccess, MemAccessKind};
 use crate::capability::{Address, Capability, Granule, Permissions, TaggedCapability};
 use crate::exception::Exception;
@@ -102,61 +103,87 @@ impl Memory {
         Ok(mem)
     }
 
-    pub fn read(&self, src: TaggedCapability, len: UAddr) -> Result<&[u8], Exception> {
-        src.check_access(MemAccessKind::Read, Some(len))?;
+    pub fn read(
+        &self,
+        src: TaggedCapability,
+        align: Align,
+        len: UAddr,
+    ) -> Result<&[u8], Exception> {
+        src.check_access(MemAccessKind::Read, align, Some(len))?;
         let start_idx = usize::try_from(src.addr().get()).unwrap();
         let endb_idx = start_idx + len as usize;
         Ok(&self.mem[start_idx..endb_idx])
     }
 
-    pub fn write(&mut self, dst: TaggedCapability, buf: &[u8]) -> Result<(), Exception> {
+    pub fn write(
+        &mut self,
+        dst: TaggedCapability,
+        align: Align,
+        buf: &[u8],
+    ) -> Result<(), Exception> {
         let mut access = MemAccess {
             tcap: dst,
             len: None,
+            align,
             kind: MemAccessKind::Write,
         };
         let buf_len =
             UAddr::try_from(buf.len()).map_err(|_| Exception::InvalidMemAccess { access })?;
         access.len = Some(buf_len);
         dst.check_given_access(access)?;
-        let start_idx: usize = dst.addr().get().try_into().unwrap();
+        let start_idx = usize::try_from(dst.addr().get()).unwrap();
         let endb_idx: usize = start_idx + buf_len as usize;
         self.mem[start_idx..endb_idx].copy_from_slice(buf);
         Ok(())
     }
 
-    pub fn read_byte(&self, src: TaggedCapability) -> Result<u8, Exception> {
-        let buf = self.read(src, 1)?;
+    pub fn read_byte(&self, src: TaggedCapability, align: Align) -> Result<u8, Exception> {
+        let buf = self.read(src, align, 1)?;
         let byte = u8::from_le_bytes(buf.try_into().unwrap());
         Ok(byte)
     }
 
-    pub fn write_byte(&mut self, dst: TaggedCapability, byte: u8) -> Result<(), Exception> {
-        self.write(dst, &byte.to_le_bytes())
+    pub fn write_byte(
+        &mut self,
+        dst: TaggedCapability,
+        align: Align,
+        byte: u8,
+    ) -> Result<(), Exception> {
+        self.write(dst, align, &byte.to_le_bytes())
     }
 
-    pub fn read_uaddr(&self, src: TaggedCapability) -> Result<UAddr, Exception> {
-        let buf = self.read(src, UADDR_SIZE as _)?;
+    pub fn read_uaddr(&self, src: TaggedCapability, align: Align) -> Result<UAddr, Exception> {
+        let buf = self.read(src, align, UADDR_SIZE as _)?;
         let val = UAddr::from_le_bytes(buf.try_into().unwrap());
         Ok(val)
     }
 
-    pub fn write_uaddr(&mut self, dst: TaggedCapability, val: UAddr) -> Result<(), Exception> {
-        self.write(dst, &val.to_le_bytes())
+    pub fn write_uaddr(
+        &mut self,
+        dst: TaggedCapability,
+        align: Align,
+        val: UAddr,
+    ) -> Result<(), Exception> {
+        self.write(dst, align, &val.to_le_bytes())
     }
 
-    pub fn read_ugran(&self, src: TaggedCapability) -> Result<UGran, Exception> {
-        let buf = self.read(src, UGRAN_SIZE as _)?;
+    pub fn read_ugran(&self, src: TaggedCapability, align: Align) -> Result<UGran, Exception> {
+        let buf = self.read(src, align, UGRAN_SIZE as _)?;
         let val = UGran::from_le_bytes(buf.try_into().unwrap());
         Ok(val)
     }
 
-    pub fn write_ugran(&mut self, dst: TaggedCapability, val: UGran) -> Result<(), Exception> {
-        self.write(dst, &val.to_le_bytes())
+    pub fn write_ugran(
+        &mut self,
+        dst: TaggedCapability,
+        align: Align,
+        val: UGran,
+    ) -> Result<(), Exception> {
+        self.write(dst, align, &val.to_le_bytes())
     }
 
     pub fn read_tcap(&self, src: TaggedCapability) -> Result<TaggedCapability, Exception> {
-        let data = self.read_ugran(src)?;
+        let data = self.read_ugran(src, Capability::ALIGN)?;
         let valid = self
             .tags
             .read_gran(src.addr().gran())
@@ -173,7 +200,7 @@ impl Memory {
         tcap: TaggedCapability,
     ) -> Result<(), Exception> {
         let data = tcap.capability().to_ugran();
-        self.write(dst, &data.to_le_bytes())?;
+        self.write(dst, Capability::ALIGN, &data.to_le_bytes())?;
         /* now that we've written the data, we need to update the tag controller
          * to preserve validity of capability */
         self.tags
@@ -183,10 +210,10 @@ impl Memory {
     }
 
     pub fn read_op(&self, mut src: TaggedCapability) -> Result<Op, Exception> {
-        src.check_access(MemAccessKind::Read, Some(Op::SIZE as _))?;
+        src.check_access(MemAccessKind::Read, Op::ALIGN, Some(Op::SIZE as _))?;
 
-        let kind = OpKind::from_byte(self.read_byte(src).unwrap())?;
-        src.capa.addr.0 += 1;
+        let kind = OpKind::from_byte(self.read_byte(src, OpKind::ALIGN).unwrap())?;
+        src.capa.addr.0 += UGRAN_SIZE as UAddr;
 
         let op1 = self.read_tcap(src).unwrap();
         src.capa.addr.0 += UGRAN_SIZE as UAddr;
@@ -206,10 +233,11 @@ impl Memory {
     }
 
     pub fn write_op(&mut self, mut dst: TaggedCapability, op: Op) -> Result<(), Exception> {
-        dst.check_access(MemAccessKind::Write, Some(Op::SIZE as _))?;
+        dst.check_access(MemAccessKind::Write, Op::ALIGN, Some(Op::SIZE as _))?;
 
-        self.write_byte(dst, op.kind.to_byte()).unwrap();
-        dst.capa.addr.0 += 1;
+        self.write_byte(dst, OpKind::ALIGN, op.kind.to_byte())
+            .unwrap();
+        dst.capa.addr.0 += UGRAN_SIZE as UAddr;
 
         self.write_tcap(dst, op.op1).unwrap();
         dst.capa.addr.0 += UGRAN_SIZE as UAddr;
@@ -224,7 +252,7 @@ impl Memory {
     }
 
     pub fn write_ops(&mut self, mut dst: TaggedCapability, ops: &[Op]) -> Result<(), Exception> {
-        let mut access = dst.access(MemAccessKind::Write, None);
+        let mut access = dst.access(MemAccessKind::Write, Op::ALIGN, None);
         let ops_size = UAddr::try_from(ops.len())
             .ok()
             .and_then(|len| len.checked_mul(Op::SIZE as _))

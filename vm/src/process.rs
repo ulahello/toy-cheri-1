@@ -11,7 +11,7 @@ impl Memory {
     pub fn execute_op(&mut self) -> Result<(), Exception> {
         let mut pc = self.regs.read(&self.tags, Register::Pc as _).unwrap();
         let op = self.read_op(pc)?;
-        pc.check_access(MemAccessKind::Execute, Some(Op::SIZE as _))?;
+        pc.check_access(MemAccessKind::Execute, Op::ALIGN, Some(Op::SIZE as _))?;
 
         let span = span!(
             Level::INFO,

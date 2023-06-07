@@ -33,17 +33,19 @@ impl fmt::Display for Exception {
                 if let Some(len) = access.len {
                     write!(
                         f,
-                        "{len} byte{bytes_plural} at {addr}: ",
-                        addr = access.tcap.addr(),
+                        "{len} byte{bytes_plural}",
                         bytes_plural = if len == 1 { "" } else { "s" }
                     )?;
                 } else {
-                    write!(
-                        f,
-                        "overflowing number of bytes at {addr}: ",
-                        addr = access.tcap.addr()
-                    )?;
+                    write!(f, "overflowing number of bytes")?;
                 }
+                write!(
+                    f,
+                    " with alignment of {align} at {addr}: ",
+                    align = access.align,
+                    addr = access.tcap.addr()
+                )?;
+
                 let start = access.tcap.start();
                 let endb = access.tcap.endb();
                 if !access.tcap.is_valid() {
@@ -62,6 +64,14 @@ impl fmt::Display for Exception {
                     )?;
                     return Ok(());
                 }
+                if !access.is_aligned() {
+                    write!(f, "access unaligned")?;
+                    return Ok(());
+                }
+                assert!(
+                    access.tcap.check_given_access(*access).is_ok(),
+                    "dev forgot to handle case why this access is invalid"
+                );
                 unreachable!("valid memory access is not exception");
             }
 

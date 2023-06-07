@@ -1,5 +1,6 @@
 use core::fmt;
 
+use crate::abi::Align;
 use crate::capability::TaggedCapability;
 use crate::int::UAddr;
 use crate::registers::Registers;
@@ -8,6 +9,7 @@ use crate::registers::Registers;
 pub struct MemAccess {
     pub tcap: TaggedCapability,
     pub len: Option<UAddr>, // None indicates overflow
+    pub align: Align,
     pub kind: MemAccessKind,
 }
 
@@ -25,6 +27,10 @@ impl MemAccess {
 
     pub const fn perms_grant(&self) -> bool {
         self.tcap.perms().grants_access(self.kind)
+    }
+
+    pub const fn is_aligned(&self) -> bool {
+        self.tcap.addr().is_aligned_to(self.align)
     }
 }
 

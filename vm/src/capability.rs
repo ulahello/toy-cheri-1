@@ -1,6 +1,7 @@
 use core::fmt;
 use std::fmt::Write;
 
+use crate::abi::Align;
 use crate::access::{MemAccess, MemAccessKind};
 use crate::exception::Exception;
 use crate::int::{UAddr, UGran, UGRAN_SIZE};
@@ -28,6 +29,10 @@ impl Address {
 
     pub const fn gran(self) -> Granule {
         Granule(self.get() / UGRAN_SIZE as UAddr)
+    }
+
+    pub const fn is_aligned_to(self, align: Align) -> bool {
+        self.get() % align.get() == 0
     }
 }
 
@@ -79,6 +84,8 @@ impl Capability {
             },
         }
     };
+
+    pub const ALIGN: Align = Align::new(UGRAN_SIZE as _).unwrap();
 
     pub const fn new(addr: Address, start: Address, endb: Address, perms: Permissions) -> Self {
         Self {
@@ -264,16 +271,17 @@ impl TaggedCapability {
         root
     }
 
-    pub const fn access(&self, kind: MemAccessKind, len: Option<UAddr>) -> MemAccess {
+    pub const fn access(&self, kind: MemAccessKind, align: Align, len: Option<UAddr>) -> MemAccess {
         MemAccess {
             tcap: *self,
             len,
+            align,
             kind,
         }
     }
 
     pub const fn check_given_access(&self, access: MemAccess) -> Result<(), Exception> {
-        if self.is_valid() && access.is_bounded() && access.perms_grant() {
+        if self.is_valid() && access.is_bounded() && access.perms_grant() && access.is_aligned() {
             Ok(())
         } else {
             Err(Exception::InvalidMemAccess { access })
@@ -283,9 +291,10 @@ impl TaggedCapability {
     pub const fn check_access(
         &self,
         kind: MemAccessKind,
+        align: Align,
         len: Option<UAddr>,
     ) -> Result<(), Exception> {
-        self.check_given_access(self.access(kind, len))
+        self.check_given_access(self.access(kind, align, len))
     }
 }
 
