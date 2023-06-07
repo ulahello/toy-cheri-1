@@ -42,11 +42,11 @@ impl Memory {
         );
         let _guard = span.enter();
 
-        tracing::trace!("allocating vm memory");
+        tracing::debug!("allocating vm memory");
         let bytes = vec![UNINIT as _; mem_len].into_boxed_slice();
-        tracing::trace!("initializing registers");
+        tracing::debug!("initializing registers");
         let regs = Registers::new();
-        tracing::trace!("initializing tag controller");
+        tracing::debug!("initializing tag controller");
         let tags = TagController::new(granules).context("failed to create tag controller")?;
         let mut mem = Self {
             mem: bytes,
@@ -57,7 +57,7 @@ impl Memory {
         /* instantiate init program */
         // set up root capability
         // TODO: get root capability from allocator
-        tracing::trace!("acquiring root capability");
+        tracing::debug!("acquiring root capability");
         let root = TaggedCapability {
             capa: Capability::new(
                  Address(0),
@@ -83,7 +83,7 @@ impl Memory {
                 w: true,
                 x: false,
             });
-        tracing::trace!(pc = pc.addr().get(), "writing init program to memory");
+        tracing::debug!(pc = pc.addr().get(), "writing init program to memory");
         mem.write_ops(pc, init)
             .context("failed to write init program to root address")?;
 
