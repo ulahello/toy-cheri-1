@@ -7,7 +7,7 @@ pub struct Align(UAddr /* must be nonzero power of two */);
 
 impl Align {
     pub const fn new(align: UAddr) -> Option<Self> {
-        if align != 0 && align.is_power_of_two() {
+        if align.is_power_of_two() {
             Some(Self(align))
         } else {
             None
