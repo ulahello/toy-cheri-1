@@ -27,9 +27,23 @@ mod serde {
 
     #[test]
     fn perms() {
-        for data in 0..(2u8.pow(Permissions::BITS as _)) {
-            let perms = Permissions::from_data(data);
-            assert_eq!(perms, Permissions::from_data(perms.to_data()));
+        const ROUNDS: u32 = 1_000;
+        let mut rng = Pcg64::new_seed(123456789);
+        for _ in 0..ROUNDS {
+            // by randomly generating fields
+            {
+                let r = rng.generate();
+                let w = rng.generate();
+                let x = rng.generate();
+                let perms = Permissions { r, w, x };
+                assert_eq!(perms, Permissions::from_data(perms.to_data()));
+            }
+
+            // by randomly generating data
+            {
+                let perms = Permissions::from_data(rng.generate());
+                assert_eq!(perms, Permissions::from_data(perms.to_data()));
+            }
         }
     }
 }
