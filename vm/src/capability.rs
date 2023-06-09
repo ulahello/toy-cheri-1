@@ -16,6 +16,7 @@ impl Address {
     pub const BITS: u8 = 40;
 
     pub const fn add(self, offset: UAddr) -> Self {
+        // TODO: overflow unlikely to be issue but not impossible
         Self(self.0.wrapping_add(offset))
     }
 
@@ -204,6 +205,11 @@ impl TaggedCapability {
     };
 
     // only for internal use!!!
+    /* TODO: this should only be called once to bless the root capability, which
+     * the initial program should use to construct capabilities as needed. since
+     * the init program is running in userspace, there isn't any shenanigans of
+     * creating a valid capability in rust land before it exists in the tag
+     * controller. */
     pub const fn new(capability: Capability, valid: bool) -> Self {
         Self {
             capa: capability,

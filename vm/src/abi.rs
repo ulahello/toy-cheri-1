@@ -2,6 +2,8 @@ use core::fmt;
 
 use crate::int::UAddr;
 
+// TODOO: don't manually read & write structs to Memory, write some wrapper or trait so all the abi bugs happen in the *same* place and i don't have to duplicate code
+
 #[derive(Clone, Copy, Debug)]
 pub struct Align(UAddr /* must be nonzero power of two */);
 
