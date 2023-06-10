@@ -10,8 +10,7 @@ use crate::capability::{Address, Capability, Granule, Permissions, TaggedCapabil
 use crate::exception::Exception;
 use crate::int::{UAddr, UGran, UADDR_SIZE, UGRAN_SIZE, UNINIT};
 use crate::op::{Op, OpKind};
-use crate::registers::Register;
-use crate::registers::Registers;
+use crate::registers::{Register, Registers};
 
 #[derive(Debug)]
 pub struct Memory {

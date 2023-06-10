@@ -237,7 +237,6 @@ impl TaggedCapability {
         self.capa.addr()
     }
 
-    #[must_use]
     pub const fn set_addr(self, new: Address) -> Self {
         Self {
             capa: self.capa.set_addr(new),
@@ -253,7 +252,6 @@ impl TaggedCapability {
         self.capa.endb()
     }
 
-    #[must_use]
     pub const fn set_bounds(self, start: Address, endb: Address) -> Self {
         // HACK: address should be const comparable
         let valid = start.get() >= self.capa.start.get() && endb.get() <= self.capa.endb.get();
@@ -272,7 +270,6 @@ impl TaggedCapability {
         self.capa.perms()
     }
 
-    #[must_use]
     pub const fn set_perms(self, perms: Permissions) -> Self {
         // new perms are valid if they at most disable a permission.
         let valid_is_valid = (!perms.x || self.capa.perms.x)
@@ -289,7 +286,6 @@ impl TaggedCapability {
         }
     }
 
-    #[must_use]
     pub const fn set_perms_from(self, perms: Permissions, mut root: Self) -> Self {
         root = root.set_bounds(self.start(), self.endb());
         // TODO: if root has tighter perms, thisll fail even if self may have had enough. document this behavior?
