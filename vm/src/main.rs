@@ -66,5 +66,6 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
             other => other?,
         }
     }
+    tracing::debug!("execution halted");
     Ok(())
 }
