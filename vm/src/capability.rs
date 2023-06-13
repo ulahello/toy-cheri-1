@@ -1,10 +1,11 @@
 use core::fmt;
 use std::fmt::Write;
 
-use crate::abi::Align;
+use crate::abi::{Align, Layout, Ty};
 use crate::access::{MemAccess, MemAccessKind};
 use crate::exception::Exception;
 use crate::int::{UAddr, UGran, UGRAN_SIZE};
+use crate::mem::Memory;
 
 /* TODO: implement sealed capabilities using metadata */
 
@@ -90,8 +91,6 @@ pub struct Capability {
 }
 
 impl Capability {
-    pub const SIZE: u8 = UGRAN_SIZE;
-
     pub const INVALID: Self = {
         const LITERALLY_ANY_ADDRESS: Address = Address(0);
         Self {
@@ -105,8 +104,6 @@ impl Capability {
             },
         }
     };
-
-    pub const ALIGN: Align = Align::new(UGRAN_SIZE as _).unwrap();
 
     pub const fn new(addr: Address, start: Address, endb: Address, perms: Permissions) -> Self {
         Self {
@@ -186,6 +183,23 @@ impl Capability {
     }
 }
 
+impl Ty for Capability {
+    const LAYOUT: Layout = Layout {
+        size: UGRAN_SIZE as _,
+        align: Align::new(UGRAN_SIZE as _).unwrap(),
+    };
+
+    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
+        Ok(Self::from_ugran(UGran::from_le_bytes(
+            mem.read_raw(src, Self::LAYOUT)?.try_into().unwrap(),
+        )))
+    }
+
+    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+        mem.write_raw(dst, Self::LAYOUT.align, &self.to_ugran().to_le_bytes())
+    }
+}
+
 /* TODO: this essentially describes a usize index into tag controller. it might
  * be dangerous to use this in api because the thing that this represents could
  * change behind its back. its like a reference but cached. */
@@ -197,8 +211,6 @@ pub struct TaggedCapability {
 }
 
 impl TaggedCapability {
-    pub const SIZE: u8 = UGRAN_SIZE;
-
     pub const INVALID: Self = Self {
         capa: Capability::INVALID,
         valid: false,
@@ -317,6 +329,27 @@ impl TaggedCapability {
         len: Option<UAddr>,
     ) -> Result<(), Exception> {
         self.check_given_access(self.access(kind, align, len))
+    }
+}
+
+impl Ty for TaggedCapability {
+    const LAYOUT: Layout = Capability::LAYOUT;
+
+    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
+        let capa = Capability::read_from_mem(src, mem)?;
+        let valid = mem
+            .tags
+            .read_gran(src.addr().gran())
+            .expect("read succeeded so address is valid");
+        Ok(Self::new(capa, valid))
+    }
+
+    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+        self.capa.write_to_mem(dst, mem)?;
+        mem.tags
+            .write_gran(dst.addr().gran(), self.is_valid())
+            .expect("valid address must be present in the tag controller");
+        Ok(())
     }
 }
 

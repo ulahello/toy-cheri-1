@@ -1,8 +1,9 @@
 use core::fmt;
 
-use crate::abi::Align;
+use crate::abi::{Align, Fields, Layout, Ty};
 use crate::capability::{Capability, TaggedCapability};
 use crate::exception::Exception;
+use crate::mem::Memory;
 
 /* TODO: turing complete memory manipulation */
 /* TODO: manipulation of cababilities */
@@ -22,10 +23,6 @@ pub enum OpKind {
 }
 
 impl OpKind {
-    pub const SIZE: u8 = 1;
-
-    pub const ALIGN: Align = Align::new(1).unwrap();
-
     pub const fn to_byte(self) -> u8 {
         self as u8
     }
@@ -48,6 +45,22 @@ impl OpKind {
     }
 }
 
+impl Ty for OpKind {
+    const LAYOUT: Layout = Layout {
+        size: 1,
+        align: Align::new(1).unwrap(),
+    };
+
+    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
+        let [byte]: [u8; 1] = mem.read_raw(src, Self::LAYOUT)?.try_into().unwrap();
+        Self::from_byte(byte)
+    }
+
+    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+        mem.write_raw(dst, Self::LAYOUT.align, &self.to_byte().to_le_bytes())
+    }
+}
+
 /* TODO: we cant know addresses of everything before we load into mem. encoded
  * ops cant be tagged. their validity must be rebuilt from some sort of root
  * capability passed to the program. */
@@ -62,10 +75,6 @@ pub struct Op {
 impl Op {
     /* TODO: currently implemented as constant size, but variable size is more
      * memory efficient because not all args are always needed */
-    // TODO(abi)
-    pub const SIZE: u8 = Capability::SIZE * 4;
-
-    pub const ALIGN: Align = Capability::ALIGN;
 
     pub const fn nop() -> Self {
         Self {
@@ -95,6 +104,46 @@ impl Op {
             op2: TaggedCapability::INVALID,
             op3: TaggedCapability::INVALID,
         }
+    }
+}
+
+impl Op {
+    const FIELDS: &'static [Layout] = &[
+        OpKind::LAYOUT,
+        TaggedCapability::LAYOUT,
+        TaggedCapability::LAYOUT,
+        TaggedCapability::LAYOUT,
+    ];
+}
+
+impl Ty for Op {
+    const LAYOUT: Layout = Fields::layout(Self::FIELDS);
+
+    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
+        let mut fields = Fields::new(src, Self::FIELDS);
+        let kind_c = fields.next().unwrap();
+        let op1_c = fields.next().unwrap();
+        let op2_c = fields.next().unwrap();
+        let op3_c = fields.next().unwrap();
+        Ok(Self {
+            kind: OpKind::read_from_mem(kind_c, mem)?,
+            op1: TaggedCapability::read_from_mem(op1_c, mem)?,
+            op2: TaggedCapability::read_from_mem(op2_c, mem)?,
+            op3: TaggedCapability::read_from_mem(op3_c, mem)?,
+        })
+    }
+
+    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+        let mut fields = Fields::new(dst, Self::FIELDS);
+        let kind_c = fields.next().unwrap();
+        let op1_c = fields.next().unwrap();
+        let op2_c = fields.next().unwrap();
+        let op3_c = fields.next().unwrap();
+        self.kind.write_to_mem(kind_c, mem)?;
+        self.op1.write_to_mem(op1_c, mem)?;
+        self.op2.write_to_mem(op2_c, mem)?;
+        self.op3.write_to_mem(op3_c, mem)?;
+        Ok(())
     }
 }
 

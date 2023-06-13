@@ -1,5 +1,6 @@
 use tracing::{span, Level};
 
+use crate::abi::Ty;
 use crate::access::MemAccessKind;
 use crate::exception::Exception;
 use crate::mem::Memory;
@@ -10,8 +11,12 @@ use crate::syscall::SyscallKind;
 impl Memory {
     pub fn execute_op(&mut self) -> Result<(), Exception> {
         let mut pc = self.regs.read(&self.tags, Register::Pc as _).unwrap();
-        let op = self.read_op(pc)?;
-        pc.check_access(MemAccessKind::Execute, Op::ALIGN, Some(Op::SIZE as _))?;
+        let op: Op = self.read(pc)?;
+        pc.check_access(
+            MemAccessKind::Execute,
+            Op::LAYOUT.align,
+            Some(Op::LAYOUT.size),
+        )?;
 
         let span = span!(
             Level::INFO,
@@ -50,7 +55,7 @@ impl Memory {
         }
 
         // increment pc
-        pc = pc.set_addr(pc.addr().add(Op::SIZE as _));
+        pc = pc.set_addr(pc.addr().add(Op::LAYOUT.size));
         self.regs
             .write(&mut self.tags, Register::Pc as _, pc)
             .unwrap();

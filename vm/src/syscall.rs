@@ -8,8 +8,6 @@ pub enum SyscallKind {
 }
 
 impl SyscallKind {
-    pub const SIZE: u8 = 1;
-
     pub const fn to_byte(self) -> u8 {
         // NOTE: guarenteed and depended to be the discriminant
         self as u8

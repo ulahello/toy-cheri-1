@@ -4,12 +4,12 @@ use bitvec::boxed::BitBox;
 use bitvec::order::Lsb0;
 use tracing::{span, Level};
 
-use crate::abi::Align;
-use crate::access::{MemAccess, MemAccessKind};
+use crate::abi::{Align, Layout, Ty};
+use crate::access::MemAccessKind;
 use crate::capability::{Address, Capability, Granule, Permissions, TaggedCapability};
 use crate::exception::Exception;
-use crate::int::{UAddr, UGran, UADDR_SIZE, UGRAN_SIZE, UNINIT};
-use crate::op::{Op, OpKind};
+use crate::int::{UAddr, UGRAN_SIZE, UNINIT};
+use crate::op::Op;
 use crate::registers::{Register, Registers};
 
 #[derive(Debug)]
@@ -28,7 +28,7 @@ impl Memory {
         let init_elems =
             UAddr::try_from(init.len()).map_err(|_| anyhow!("program length overflow"))?;
         let init_bytes = init_elems
-            .checked_mul(Op::SIZE as _)
+            .checked_mul(Op::LAYOUT.size as _)
             .ok_or(anyhow!("program size overflow"))?;
 
         /* initialize components */
@@ -61,7 +61,7 @@ impl Memory {
             capa: Capability::new(
                  Address(0),
                  Address(0),
-                Address(mem_len.try_into().expect("converted from UAddr to usize at start of Memory::new, so converting back to UAddr is infallible")),
+                Address(UAddr::try_from(mem_len).expect("converted from UAddr to usize at start of Memory::new, so converting back to UAddr is infallible")),
                 Permissions {
                     r: true,
                     w: true,
@@ -83,7 +83,7 @@ impl Memory {
                 x: false,
             });
         tracing::debug!(pc = pc.addr().get(), "writing init program to memory");
-        mem.write_ops(pc, init)
+        mem.write_slice(pc, init)
             .context("failed to write init program to root address")?;
 
         // remove write access
@@ -102,167 +102,70 @@ impl Memory {
         Ok(mem)
     }
 
-    pub fn read(
+    pub fn read<T: Ty>(&self, src: TaggedCapability) -> Result<T, Exception> {
+        let layout = T::LAYOUT;
+        src.check_access(MemAccessKind::Read, layout.align, Some(layout.size))?;
+        T::read_from_mem(src, self)
+    }
+
+    pub fn write<T: Ty>(&mut self, dst: TaggedCapability, val: T) -> Result<(), Exception> {
+        let layout = T::LAYOUT;
+        dst.check_access(MemAccessKind::Write, layout.align, Some(layout.size))?;
+        val.write_to_mem(dst, self)
+    }
+
+    pub fn write_slice<T: Ty>(
+        &mut self,
+        mut dst: TaggedCapability,
+        vals: &[T],
+    ) -> Result<(), Exception> {
+        let layout = T::LAYOUT;
+
+        let mut access = dst.access(MemAccessKind::Write, layout.align, None);
+        let len = UAddr::try_from(vals.len())
+            .ok()
+            .and_then(|size| size.checked_mul(layout.size))
+            .ok_or(Exception::InvalidMemAccess { access })?;
+        access.len = Some(len);
+        dst.check_given_access(access)?;
+
+        for val in vals.iter().copied() {
+            self.write(dst, val)?;
+            dst = dst.set_addr(dst.addr().add(layout.size));
+        }
+
+        Ok(())
+    }
+}
+
+impl Memory {
+    pub(crate) fn read_raw(
         &self,
         src: TaggedCapability,
-        align: Align,
-        len: UAddr,
+        layout: Layout,
     ) -> Result<&[u8], Exception> {
-        src.check_access(MemAccessKind::Read, align, Some(len))?;
+        src.check_access(MemAccessKind::Read, layout.align, Some(layout.size))?;
+        // casts assume that bounds of capability lie within bounds of self.mem
         let start_idx = usize::try_from(src.addr().get()).unwrap();
-        let endb_idx = start_idx + len as usize;
+        let endb_idx = start_idx + layout.size as usize;
         Ok(&self.mem[start_idx..endb_idx])
     }
 
-    pub fn write(
+    pub(crate) fn write_raw(
         &mut self,
         dst: TaggedCapability,
         align: Align,
         buf: &[u8],
     ) -> Result<(), Exception> {
-        let mut access = MemAccess {
-            tcap: dst,
-            len: None,
-            align,
-            kind: MemAccessKind::Write,
-        };
+        let mut access = dst.access(MemAccessKind::Write, align, None);
         let buf_len =
             UAddr::try_from(buf.len()).map_err(|_| Exception::InvalidMemAccess { access })?;
         access.len = Some(buf_len);
         dst.check_given_access(access)?;
+        // casts assume that bounds of capability lie within bounds of self.mem
         let start_idx = usize::try_from(dst.addr().get()).unwrap();
         let endb_idx: usize = start_idx + buf_len as usize;
         self.mem[start_idx..endb_idx].copy_from_slice(buf);
-        Ok(())
-    }
-
-    pub fn read_byte(&self, src: TaggedCapability, align: Align) -> Result<u8, Exception> {
-        let buf = self.read(src, align, 1)?;
-        let byte = u8::from_le_bytes(buf.try_into().unwrap());
-        Ok(byte)
-    }
-
-    pub fn write_byte(
-        &mut self,
-        dst: TaggedCapability,
-        align: Align,
-        byte: u8,
-    ) -> Result<(), Exception> {
-        self.write(dst, align, &byte.to_le_bytes())
-    }
-
-    pub fn read_uaddr(&self, src: TaggedCapability, align: Align) -> Result<UAddr, Exception> {
-        let buf = self.read(src, align, UADDR_SIZE as _)?;
-        let val = UAddr::from_le_bytes(buf.try_into().unwrap());
-        Ok(val)
-    }
-
-    pub fn write_uaddr(
-        &mut self,
-        dst: TaggedCapability,
-        align: Align,
-        val: UAddr,
-    ) -> Result<(), Exception> {
-        self.write(dst, align, &val.to_le_bytes())
-    }
-
-    pub fn read_ugran(&self, src: TaggedCapability, align: Align) -> Result<UGran, Exception> {
-        let buf = self.read(src, align, UGRAN_SIZE as _)?;
-        let val = UGran::from_le_bytes(buf.try_into().unwrap());
-        Ok(val)
-    }
-
-    pub fn write_ugran(
-        &mut self,
-        dst: TaggedCapability,
-        align: Align,
-        val: UGran,
-    ) -> Result<(), Exception> {
-        self.write(dst, align, &val.to_le_bytes())
-    }
-
-    pub fn read_tcap(&self, src: TaggedCapability) -> Result<TaggedCapability, Exception> {
-        let data = self.read_ugran(src, Capability::ALIGN)?;
-        let valid = self
-            .tags
-            .read_gran(src.addr().gran())
-            .expect("read succeeded so address is valid");
-        Ok(TaggedCapability {
-            capa: Capability::from_ugran(data),
-            valid,
-        })
-    }
-
-    pub fn write_tcap(
-        &mut self,
-        dst: TaggedCapability,
-        tcap: TaggedCapability,
-    ) -> Result<(), Exception> {
-        let data = tcap.capability().to_ugran();
-        self.write(dst, Capability::ALIGN, &data.to_le_bytes())?;
-        /* now that we've written the data, we need to update the tag controller
-         * to preserve validity of capability */
-        self.tags
-            .write_gran(dst.addr().gran(), tcap.is_valid())
-            .expect("valid address must be present in tag controller");
-        Ok(())
-    }
-
-    pub fn read_op(&self, mut src: TaggedCapability) -> Result<Op, Exception> {
-        src.check_access(MemAccessKind::Read, Op::ALIGN, Some(Op::SIZE as _))?;
-
-        let kind = OpKind::from_byte(self.read_byte(src, OpKind::ALIGN).unwrap())?;
-        src.capa.addr.0 += UGRAN_SIZE as UAddr;
-
-        let op1 = self.read_tcap(src).unwrap();
-        src.capa.addr.0 += UGRAN_SIZE as UAddr;
-
-        let op2 = self.read_tcap(src).unwrap();
-        src.capa.addr.0 += UGRAN_SIZE as UAddr;
-
-        let op3 = self.read_tcap(src).unwrap();
-        src.capa.addr.0 += UGRAN_SIZE as UAddr;
-
-        Ok(Op {
-            kind,
-            op1,
-            op2,
-            op3,
-        })
-    }
-
-    pub fn write_op(&mut self, mut dst: TaggedCapability, op: Op) -> Result<(), Exception> {
-        dst.check_access(MemAccessKind::Write, Op::ALIGN, Some(Op::SIZE as _))?;
-
-        self.write_byte(dst, OpKind::ALIGN, op.kind.to_byte())
-            .unwrap();
-        dst.capa.addr.0 += UGRAN_SIZE as UAddr;
-
-        self.write_tcap(dst, op.op1).unwrap();
-        dst.capa.addr.0 += UGRAN_SIZE as UAddr;
-
-        self.write_tcap(dst, op.op2).unwrap();
-        dst.capa.addr.0 += UGRAN_SIZE as UAddr;
-
-        self.write_tcap(dst, op.op3).unwrap();
-        dst.capa.addr.0 += UGRAN_SIZE as UAddr;
-
-        Ok(())
-    }
-
-    pub fn write_ops(&mut self, mut dst: TaggedCapability, ops: &[Op]) -> Result<(), Exception> {
-        let mut access = dst.access(MemAccessKind::Write, Op::ALIGN, None);
-        let ops_size = UAddr::try_from(ops.len())
-            .ok()
-            .and_then(|len| len.checked_mul(Op::SIZE as _))
-            .ok_or(Exception::InvalidMemAccess { access })?;
-        access.len = Some(ops_size);
-        dst.check_given_access(access)?;
-
-        for op in ops {
-            self.write_op(dst, *op).unwrap();
-            dst.capa.addr.0 += Op::SIZE as UAddr;
-        }
         Ok(())
     }
 }
