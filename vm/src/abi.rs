@@ -14,6 +14,7 @@ impl Align {
     pub const MIN: Self = Self::new(1).unwrap();
 
     pub const fn new(align: UAddr) -> Option<Self> {
+        // power of two implies nonzero
         if align.is_power_of_two() {
             Some(Self(align))
         } else {

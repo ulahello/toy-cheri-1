@@ -153,7 +153,7 @@ impl Capability {
     }
 
     pub const fn is_addr_bounded(&self, addr: Address) -> bool {
-        // HACK: address should be const comparable
+        // HACK: Address should be const comparable
         addr.get() >= self.start.get() && addr.get() < self.endb.get()
     }
 
