@@ -59,6 +59,7 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
         Op::syscall(),
     ];
     let mut mem = Memory::new(args.granules, init).context("failed to instantiate memory")?;
+    tracing::debug!("execution start");
     loop {
         match mem.execute_op() {
             Ok(()) => (),
