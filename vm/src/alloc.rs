@@ -148,6 +148,7 @@ pub fn alloc(
             ator = ator.set_addr(ator.addr().align_to(BumpAlloc::LAYOUT.align));
             let mut bump: BumpAlloc = mem.read(ator)?;
             let ation = bump.alloc(layout)?;
+            mem.write(ator, bump)?;
             ation
         }
     };
