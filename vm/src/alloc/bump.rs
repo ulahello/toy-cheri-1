@@ -1,5 +1,5 @@
 use super::{AllocErr, AllocErrKind, Stats};
-use crate::abi::{Align, Fields, Layout, Ty};
+use crate::abi::{Fields, Layout, Ty};
 use crate::capability::TaggedCapability;
 use crate::exception::Exception;
 use crate::int::UAddr;
