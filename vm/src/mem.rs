@@ -6,6 +6,7 @@ use tracing::{span, Level};
 
 use crate::abi::{Align, Layout, Ty};
 use crate::access::MemAccessKind;
+use crate::alloc::{self, Strategy};
 use crate::capability::{Address, Capability, Granule, Permissions, TaggedCapability};
 use crate::exception::Exception;
 use crate::int::{UAddr, UGRAN_SIZE, UNINIT};
@@ -55,12 +56,11 @@ impl Memory {
 
         /* instantiate init program */
         // set up root capability
-        // TODO: get root capability from allocator
         tracing::debug!("acquiring root capability");
         let root = TaggedCapability {
             capa: Capability::new(
-                 Address(0),
-                 Address(0),
+                Address(0),
+                Address(0),
                 Address(UAddr::try_from(mem_len).expect("converted from UAddr to usize at start of Memory::new, so converting back to UAddr is infallible")),
                 Permissions {
                     r: true,
@@ -70,18 +70,32 @@ impl Memory {
             ),
             valid: true,
         };
-        mem.regs
-            .write(&mut mem.tags, Register::Z0 as _, root)
-            .unwrap();
+        tracing::debug!("initializing root allocator");
+        let root_alloc = {
+            alloc::init(Strategy::Bump, root, &mut mem)
+                .context("failed to initialize root allocator")?
+        };
+        {
+            let stats = alloc::stat(root_alloc, &mem)?;
+            tracing::trace!(stats.bytes_free, "allocator reports stats");
+        }
 
         // write init program
-        let mut pc = root
-            .set_bounds(root.start(), root.start().add(init_bytes))
-            .set_perms(Permissions {
-                r: false,
-                w: true,
-                x: false,
-            });
+        tracing::debug!("allocating program");
+        let mut pc = alloc::alloc(
+            root_alloc,
+            Layout {
+                size: init_bytes,
+                align: TaggedCapability::LAYOUT.align,
+            },
+            &mut mem,
+        )
+        .context("failed to allocate program")?
+        .set_perms(Permissions {
+            r: false,
+            w: true,
+            x: false,
+        });
         tracing::debug!(pc = pc.addr().get(), "writing init program to memory");
         mem.write_slice(pc, init)
             .context("failed to write init program to root address")?;

@@ -36,6 +36,18 @@ impl Address {
     pub const fn is_aligned_to(self, align: Align) -> bool {
         self.get() % align.get() == 0
     }
+
+    pub const fn align_to(self, align: Align) -> Self {
+        if self.is_aligned_to(align) {
+            self
+        } else {
+            self.align_up(align)
+        }
+    }
+
+    pub const fn align_up(self, align: Align) -> Self {
+        Self(self.get().next_multiple_of(align.get()))
+    }
 }
 
 impl PartialEq for Address {

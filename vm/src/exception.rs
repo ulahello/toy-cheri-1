@@ -2,6 +2,7 @@ use core::fmt;
 use std::io;
 
 use crate::access::{MemAccess, RegAccess};
+use crate::alloc::{AllocErr, AllocErrKind};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Exception {
@@ -9,9 +10,13 @@ pub enum Exception {
 
     InvalidSyscall { byte: u8 },
 
+    InvalidAllocStrategy { byte: u8 },
+
     InvalidMemAccess { access: MemAccess },
 
     InvalidRegAccess { access: RegAccess },
+
+    AllocErr { err: AllocErr },
 
     ProcessExit,
 }
@@ -25,6 +30,10 @@ impl fmt::Display for Exception {
 
             Self::InvalidSyscall { byte } => {
                 write!(f, "invalid system call 0x{byte:x}")?;
+            }
+
+            Self::InvalidAllocStrategy { byte } => {
+                write!(f, "invalid allocation strategy {byte}")?;
             }
 
             Self::InvalidMemAccess { access } => {
@@ -85,6 +94,13 @@ impl fmt::Display for Exception {
                     write!(f, "no such register")?;
                 } else {
                     unreachable!("valid register access is not exception");
+                }
+            }
+
+            Self::AllocErr { err } => {
+                write!(f, "allocator reported error: ")?;
+                match err.kind {
+                    AllocErrKind::Oom => write!(f, "out of memory")?,
                 }
             }
 

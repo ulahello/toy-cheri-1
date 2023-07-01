@@ -1,4 +1,4 @@
-#![feature(const_option)]
+#![feature(int_roundings, const_option)]
 
 pub mod abi;
 pub mod access;
