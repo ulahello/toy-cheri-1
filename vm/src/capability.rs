@@ -299,7 +299,9 @@ impl TaggedCapability {
     }
 
     pub const fn set_perms_from(self, perms: Permissions, mut root: Self) -> Self {
-        root = root.set_bounds(self.start(), self.endb());
+        root = root
+            .set_addr(self.addr())
+            .set_bounds(self.start(), self.endb());
         // TODO: if root has tighter perms, thisll fail even if self may have had enough. document this behavior?
         root = root.set_perms(perms);
         root
