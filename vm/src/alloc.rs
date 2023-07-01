@@ -87,6 +87,8 @@ impl Ty for Stats {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AllocErr {
+    pub stats: Stats,
+    pub requested: Layout,
     pub kind: AllocErrKind,
 }
 

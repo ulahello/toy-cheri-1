@@ -27,7 +27,7 @@ impl Align {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Layout {
     pub size: UAddr,
     pub align: Align,
