@@ -38,11 +38,10 @@ impl BumpAlloc {
     }
 
     pub fn alloc(&mut self, layout: Layout) -> Result<TaggedCapability, AllocErr> {
-        let err = AllocErr {
-            kind: AllocErrKind::Oom,
-        };
         if self.inner.addr() == self.inner.endb() {
-            return Err(err);
+            return Err(AllocErr {
+                kind: AllocErrKind::Oom,
+            });
         }
         let mut ation = self.inner;
         ation = ation.set_addr(ation.addr().align_to(layout.align));
@@ -51,7 +50,9 @@ impl BumpAlloc {
             self.inner = self.inner.set_addr(ation.endb());
             Ok(ation)
         } else {
-            Err(err)
+            Err(AllocErr {
+                kind: AllocErrKind::NotEnoughMem,
+            })
         }
     }
 }

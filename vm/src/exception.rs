@@ -100,6 +100,7 @@ impl fmt::Display for Exception {
             Self::AllocErr { err } => {
                 write!(f, "allocator reported error: ")?;
                 match err.kind {
+                    AllocErrKind::NotEnoughMem => write!(f, "not enough memory")?,
                     AllocErrKind::Oom => write!(f, "out of memory")?,
                 }
             }

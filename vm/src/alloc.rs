@@ -92,6 +92,10 @@ pub struct AllocErr {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AllocErrKind {
+    /// The requested layout cannot be allocated because there aren't enough bytes free.
+    NotEnoughMem,
+
+    /// The allocator reports 0 bytes free.
     Oom,
 }
 
