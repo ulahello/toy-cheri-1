@@ -22,6 +22,16 @@ pub struct Memory {
 
 impl Memory {
     pub fn new(granules: UAddr, init: &[Op]) -> anyhow::Result<Self> {
+        fn log_stats(ator: TaggedCapability, mem: &Memory) -> anyhow::Result<()> {
+            let stats = alloc::stat(ator, &mem)?;
+            tracing::trace!(
+                stats.strategy = format_args!("{:?}", stats.strategy),
+                stats.bytes_free,
+                "allocator reports stats"
+            );
+            Ok(())
+        }
+
         let mem_len = granules
             .checked_mul(UAddr::from(UGRAN_SIZE))
             .and_then(|len| usize::try_from(len).ok())
@@ -75,14 +85,7 @@ impl Memory {
             alloc::init(Strategy::Bump, root, &mut mem)
                 .context("failed to initialize root allocator")?
         };
-        {
-            let stats = alloc::stat(root_alloc, &mem)?;
-            tracing::trace!(
-                stats.strategy = format_args!("{:?}", stats.strategy),
-                stats.bytes_free,
-                "allocator reports stats"
-            );
-        }
+        log_stats(root_alloc, &mem)?;
 
         // write init program
         tracing::debug!("allocating program");
@@ -100,6 +103,7 @@ impl Memory {
             w: true,
             x: false,
         });
+        log_stats(root_alloc, &mem)?;
         tracing::debug!(pc = pc.addr().get(), "writing init program to memory");
         mem.write_slice(pc, init)
             .context("failed to write init program to root address")?;
