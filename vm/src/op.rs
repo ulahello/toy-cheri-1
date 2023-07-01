@@ -5,8 +5,8 @@ use crate::capability::{Capability, TaggedCapability};
 use crate::exception::Exception;
 use crate::mem::Memory;
 
-/* TODO: turing complete memory manipulation */
-/* TODO: manipulation of cababilities */
+/* TODOO: turing complete memory manipulation */
+/* TODOO: manipulation of cababilities */
 // informally based on riscv but this is not by definition so could change anytime
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
