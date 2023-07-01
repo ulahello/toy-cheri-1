@@ -79,7 +79,7 @@ impl Ty for Stats {
         let mut fields = Fields::new(dst, Self::FIELDS);
         let strategy = fields.next().unwrap();
         let bytes_free = fields.next().unwrap();
-        self.strategy.write_to_mem(bytes_free, mem)?;
+        self.strategy.write_to_mem(strategy, mem)?;
         self.bytes_free.write_to_mem(bytes_free, mem)?;
         Ok(())
     }
