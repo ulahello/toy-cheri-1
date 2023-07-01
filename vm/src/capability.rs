@@ -190,13 +190,11 @@ impl Ty for Capability {
     };
 
     fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        Ok(Self::from_ugran(UGran::from_le_bytes(
-            mem.read_raw(src, Self::LAYOUT)?.try_into().unwrap(),
-        )))
+        Ok(Self::from_ugran(mem.read(src)?))
     }
 
     fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        mem.write_raw(dst, Self::LAYOUT.align, &self.to_ugran().to_le_bytes())
+        mem.write(dst, self.to_ugran())
     }
 }
 

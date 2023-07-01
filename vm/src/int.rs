@@ -1,5 +1,10 @@
 use core::mem;
 
+use crate::abi::{Align, Layout, Ty};
+use crate::capability::TaggedCapability;
+use crate::exception::Exception;
+use crate::mem::Memory;
+
 pub type UGran = u128;
 pub type UAddr = u64;
 
@@ -7,3 +12,53 @@ pub const UADDR_SIZE: u8 = mem::size_of::<UAddr>() as _;
 pub const UGRAN_SIZE: u8 = mem::size_of::<UGran>() as _;
 
 pub const UNINIT: UAddr = UAddr::from_le_bytes([0x55; UADDR_SIZE as _]);
+
+// TODO: Ty impls for ints are duplicated
+
+impl Ty for UAddr {
+    const LAYOUT: Layout = Layout {
+        size: UADDR_SIZE as _,
+        align: Align::new(1).unwrap(),
+    };
+
+    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
+        let slice = mem.read_raw(src, Self::LAYOUT)?;
+        Ok(Self::from_le_bytes(slice.try_into().unwrap()))
+    }
+
+    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+        mem.write_raw(dst, Self::LAYOUT.align, &self.to_le_bytes())
+    }
+}
+
+impl Ty for UGran {
+    const LAYOUT: Layout = Layout {
+        size: UGRAN_SIZE as _,
+        align: Align::new(1).unwrap(),
+    };
+
+    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
+        let slice = mem.read_raw(src, Self::LAYOUT)?;
+        Ok(Self::from_le_bytes(slice.try_into().unwrap()))
+    }
+
+    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+        mem.write_raw(dst, Self::LAYOUT.align, &self.to_le_bytes())
+    }
+}
+
+impl Ty for u8 {
+    const LAYOUT: Layout = Layout {
+        size: mem::size_of::<u8>() as _,
+        align: Align::new(1).unwrap(),
+    };
+
+    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
+        let slice = mem.read_raw(src, Self::LAYOUT)?;
+        Ok(Self::from_le_bytes(slice.try_into().unwrap()))
+    }
+
+    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+        mem.write_raw(dst, Self::LAYOUT.align, &self.to_le_bytes())
+    }
+}

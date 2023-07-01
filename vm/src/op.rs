@@ -52,12 +52,11 @@ impl Ty for OpKind {
     };
 
     fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        let [byte]: [u8; 1] = mem.read_raw(src, Self::LAYOUT)?.try_into().unwrap();
-        Self::from_byte(byte)
+        Self::from_byte(mem.read(src)?)
     }
 
     fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        mem.write_raw(dst, Self::LAYOUT.align, &self.to_byte().to_le_bytes())
+        mem.write(dst, self.to_byte())
     }
 }
 
