@@ -102,15 +102,17 @@ impl Memory {
         Ok(mem)
     }
 
-    pub fn read<T: Ty>(&self, src: TaggedCapability) -> Result<T, Exception> {
+    pub fn read<T: Ty>(&self, mut src: TaggedCapability) -> Result<T, Exception> {
         let layout = T::LAYOUT;
         src.check_access(MemAccessKind::Read, layout.align, Some(layout.size))?;
+        src = src.set_bounds(src.addr(), src.addr().add(T::LAYOUT.size));
         T::read_from_mem(src, self)
     }
 
-    pub fn write<T: Ty>(&mut self, dst: TaggedCapability, val: T) -> Result<(), Exception> {
+    pub fn write<T: Ty>(&mut self, mut dst: TaggedCapability, val: T) -> Result<(), Exception> {
         let layout = T::LAYOUT;
         dst.check_access(MemAccessKind::Write, layout.align, Some(layout.size))?;
+        dst = dst.set_bounds(dst.addr(), dst.addr().add(T::LAYOUT.size));
         val.write_to_mem(dst, self)
     }
 
