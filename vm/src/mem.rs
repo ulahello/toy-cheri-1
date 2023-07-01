@@ -77,7 +77,11 @@ impl Memory {
         };
         {
             let stats = alloc::stat(root_alloc, &mem)?;
-            tracing::trace!(stats.bytes_free, "allocator reports stats");
+            tracing::trace!(
+                stats.strategy = format_args!("{:?}", stats.strategy),
+                stats.bytes_free,
+                "allocator reports stats"
+            );
         }
 
         // write init program

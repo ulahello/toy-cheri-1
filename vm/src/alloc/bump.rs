@@ -1,4 +1,4 @@
-use super::{AllocErr, AllocErrKind, Stats};
+use super::{AllocErr, AllocErrKind, Stats, Strategy};
 use crate::abi::{Fields, Layout, Ty};
 use crate::capability::TaggedCapability;
 use crate::exception::Exception;
@@ -24,6 +24,7 @@ impl BumpAlloc {
 
     pub const fn stat(&self) -> Stats {
         Stats {
+            strategy: Strategy::Bump,
             bytes_free: self.bytes_free(),
         }
     }

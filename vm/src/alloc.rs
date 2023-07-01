@@ -54,11 +54,12 @@ impl Ty for Strategy {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Stats {
+    pub strategy: Strategy,
     pub bytes_free: UAddr,
 }
 
 impl Stats {
-    const FIELDS: &'static [Layout] = &[UAddr::LAYOUT];
+    const FIELDS: &'static [Layout] = &[Strategy::LAYOUT, UAddr::LAYOUT];
 }
 
 impl Ty for Stats {
@@ -66,15 +67,19 @@ impl Ty for Stats {
 
     fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
         let mut fields = Fields::new(src, Self::FIELDS);
+        let strategy = fields.next().unwrap();
         let bytes_free = fields.next().unwrap();
         Ok(Self {
+            strategy: Strategy::read_from_mem(strategy, mem)?,
             bytes_free: UAddr::read_from_mem(bytes_free, mem)?,
         })
     }
 
     fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
         let mut fields = Fields::new(dst, Self::FIELDS);
+        let strategy = fields.next().unwrap();
         let bytes_free = fields.next().unwrap();
+        self.strategy.write_to_mem(bytes_free, mem)?;
         self.bytes_free.write_to_mem(bytes_free, mem)?;
         Ok(())
     }
