@@ -39,10 +39,9 @@ impl fmt::Display for Align {
     }
 }
 
+// NOTE: prefer methods on Memory because it explicitly checks accesses
 pub trait Ty: Copy + Sized + fmt::Debug {
     const LAYOUT: Layout;
-
-    // NOTE: prefer methods on Memory because it explicitly checks accesses
 
     fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception>;
 
