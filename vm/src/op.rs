@@ -5,8 +5,8 @@ use crate::capability::{Capability, TaggedCapability};
 use crate::exception::Exception;
 use crate::mem::Memory;
 
-/* TODOO: turing complete memory manipulation */
-/* TODOO: manipulation of cababilities */
+/* TODOOO: turing complete memory manipulation */
+/* TODOOO: manipulation of cababilities */
 // informally based on riscv but this is not by definition so could change anytime
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
@@ -60,7 +60,7 @@ impl Ty for OpKind {
     }
 }
 
-/* TODO: we cant know addresses of everything before we load into mem. encoded
+/* TODOO: we cant know addresses of everything before we load into mem. encoded
  * ops cant be tagged. their validity must be rebuilt from some sort of root
  * capability passed to the program. */
 #[derive(Clone, Copy)]

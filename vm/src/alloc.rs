@@ -8,7 +8,7 @@ use crate::exception::Exception;
 use crate::int::UAddr;
 use crate::mem::Memory;
 
-/* TODO: temporal safety (this will do that allegedly)
+/* TODOO: temporal safety (this will do that allegedly)
 explore the following:
 - CHERIvoke
 - ViK: practical mitigation of temporal memory safety violations through object ID inspection
@@ -143,7 +143,7 @@ pub fn alloc(
     layout: Layout,
     mem: &mut Memory,
 ) -> Result<TaggedCapability, Exception> {
-    /* TODO: very bad things can happen if ator has been mutated since being
+    /* TODOO: very bad things can happen if ator has been mutated since being
      * returned by super::new. until capabilities can be sealed (and the
      * immutability of ator is guaranteed), this function is optimistic and
      * undermines everything :) */

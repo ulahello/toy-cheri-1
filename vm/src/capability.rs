@@ -7,7 +7,7 @@ use crate::exception::Exception;
 use crate::int::{UAddr, UGran, UGRAN_SIZE};
 use crate::mem::Memory;
 
-/* TODO: implement sealed capabilities using metadata */
+/* TODOOO: implement sealed capabilities using metadata */
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
