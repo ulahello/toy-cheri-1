@@ -169,6 +169,21 @@ pub fn free(
     todo!()
 }
 
+pub fn free_all(mut ator: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+    // TODO: reading allocator is dup code
+    let strat: Strategy = mem.read(ator)?;
+    ator = ator.set_addr(ator.addr().add(Strategy::LAYOUT.size));
+    match strat {
+        Strategy::Bump => {
+            ator = ator.set_addr(ator.addr().align_to(BumpAlloc::LAYOUT.align));
+            let mut bump: BumpAlloc = mem.read(ator)?;
+            bump.free_all(mem)?;
+            mem.write(ator, bump)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn stat(mut ator: TaggedCapability, mem: &Memory) -> Result<Stats, Exception> {
     // TODO: reading allocator is dup code
     let strat: Strategy = mem.read(ator)?;

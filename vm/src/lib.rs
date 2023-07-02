@@ -10,6 +10,7 @@ pub mod mem;
 pub mod op;
 pub mod process;
 pub mod registers;
+pub mod revoke;
 pub mod syscall;
 
 #[cfg(test)]

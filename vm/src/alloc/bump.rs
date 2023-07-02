@@ -4,6 +4,7 @@ use crate::capability::TaggedCapability;
 use crate::exception::Exception;
 use crate::int::UAddr;
 use crate::mem::Memory;
+use crate::revoke;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct BumpAlloc {
@@ -55,6 +56,14 @@ impl BumpAlloc {
         } else {
             Err(err(AllocErrKind::NotEnoughMem))
         }
+    }
+
+    pub fn free_all(&mut self, mem: &mut Memory) -> Result<(), Exception> {
+        self.inner = self.inner.set_addr(self.inner.start());
+        /* TODO: be careful about if revocation fails, since it could leave
+         * invalid pointers lying around failure. failure here should be
+         * fatal */
+        revoke::by_bounds(mem, self.inner.start(), self.inner.endb())
     }
 }
 

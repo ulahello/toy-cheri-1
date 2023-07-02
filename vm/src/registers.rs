@@ -18,18 +18,23 @@ impl Registers {
     }
 
     pub fn read(&self, tags: &TagController, reg: u8) -> Result<TaggedCapability, Exception> {
+        let capa = self.read_untagged(reg)?;
+        let valid = if reg == Register::Zero as _ {
+            // TODO: if true false?
+            false
+        } else {
+            tags.read_reg(reg).unwrap()
+        };
+        Ok(TaggedCapability { capa, valid })
+    }
+
+    pub fn read_untagged(&self, reg: u8) -> Result<Capability, Exception> {
         if Self::is_reg_valid(reg) {
             if reg == Register::Zero as _ {
-                return Ok(TaggedCapability {
-                    capa: Capability::from_ugran(0),
-                    valid: false,
-                });
+                return Ok(Capability::from_ugran(0));
             }
             let idx = Self::reg_to_idx(reg);
-            Ok(TaggedCapability {
-                capa: self.regs[idx],
-                valid: tags.read_reg(reg).unwrap(),
-            })
+            Ok(self.regs[idx])
         } else {
             Err(Exception::InvalidRegAccess {
                 access: RegAccess { reg },

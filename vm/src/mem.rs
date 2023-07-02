@@ -18,6 +18,7 @@ pub struct Memory {
     pub(crate) mem: Box<[u8]>,
     pub(crate) regs: Registers,
     pub(crate) tags: TagController,
+    pub(crate) root: TaggedCapability,
 }
 
 impl Memory {
@@ -62,12 +63,13 @@ impl Memory {
             mem: bytes,
             regs,
             tags,
+            root: TaggedCapability::INVALID,
         };
 
         /* instantiate init program */
         // set up root capability
         tracing::debug!("acquiring root capability");
-        let root = TaggedCapability {
+        mem.root = TaggedCapability {
             capa: Capability::new(
                 Address(0),
                 Address(0),
@@ -82,7 +84,7 @@ impl Memory {
         };
         tracing::debug!("initializing root allocator");
         let root_alloc = {
-            alloc::init(Strategy::Bump, root, &mut mem)
+            alloc::init(Strategy::Bump, mem.root, &mut mem)
                 .context("failed to initialize root allocator")?
         };
         log_stats(root_alloc, &mem)?;
@@ -115,7 +117,7 @@ impl Memory {
                 w: false,
                 x: true,
             },
-            root,
+            mem.root,
         );
         mem.regs
             .write(&mut mem.tags, Register::Pc as _, pc)
@@ -198,7 +200,7 @@ impl Memory {
 pub struct TagController {
     // 0..32 => registers
     // 32.. => mem granules
-    mem: BitBox<u8, Lsb0>,
+    pub(crate) mem: BitBox<u8, Lsb0>,
 }
 
 impl TagController {
@@ -245,6 +247,12 @@ impl TagController {
     fn gran_to_idx(gran: Granule) -> Option<usize> {
         let idx = gran.0.checked_add(Registers::COUNT as _)?;
         usize::try_from(idx).ok()
+    }
+
+    pub(crate) fn idx_to_gran(idx: usize) -> Option<Granule> {
+        idx.checked_sub(Registers::COUNT as _)
+            .and_then(|gran| UAddr::try_from(gran).ok())
+            .map(Granule)
     }
 
     const fn reg_to_idx(reg: u8) -> Option<usize> {
