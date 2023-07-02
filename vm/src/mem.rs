@@ -24,7 +24,7 @@ pub struct Memory {
 impl Memory {
     pub fn new(granules: UAddr, init: &[Op]) -> anyhow::Result<Self> {
         fn log_stats(ator: TaggedCapability, mem: &Memory) -> anyhow::Result<()> {
-            let stats = alloc::stat(ator, &mem)?;
+            let stats = alloc::stat(ator, mem)?;
             tracing::trace!(
                 stats.strategy = format_args!("{:?}", stats.strategy),
                 stats.bytes_free,
