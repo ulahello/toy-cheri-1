@@ -1,0 +1,9 @@
+[package]
+name = "fruticose-asm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+fruticose-vm = { path = "../vm"}
+unicode-segmentation = "1.10.1"

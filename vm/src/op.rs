@@ -8,7 +8,7 @@ use crate::mem::Memory;
 /* TODOOO: turing complete memory manipulation */
 /* TODOOO: manipulation of cababilities */
 // informally based on riscv but this is not by definition so could change anytime
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum OpKind {
     /// No-op.
