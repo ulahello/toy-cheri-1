@@ -79,13 +79,35 @@ impl<'s> Lexer<'s> {
     }
 
     fn consume_grapheme(&mut self) -> Next<'s> {
-        let next = self.peek_grapheme();
-        self.graphs.next();
+        let (next, skip_by) = self.peek_grapheme();
+        for _ in 0..skip_by {
+            self.graphs.next();
+        }
         next
     }
 
-    fn peek_grapheme(&mut self) -> Next<'s> {
-        if let Some((idx, chr)) = self.graphs.peek().copied() {
+    fn peek_grapheme(&mut self) -> (Next<'s>, usize) {
+        let mut skip_by = 1;
+        if let Some((mut idx, mut chr)) = self.graphs.peek().copied() {
+            // skip comments
+            if chr == ";" {
+                let mut graphs = UnicodeSegmentation::grapheme_indices(&self.src[idx..], true);
+                loop {
+                    match graphs.next() {
+                        Some((idx_offset, new_chr @ "\n")) => {
+                            idx += idx_offset;
+                            chr = new_chr;
+                            break;
+                        }
+                        None => return (Next::Eof, skip_by),
+                        _ => {
+                            skip_by += 1;
+                            continue;
+                        }
+                    }
+                }
+            }
+
             // either tok or char
             let typ = match chr {
                 "\n" => Some(TokenTyp::Newline),
@@ -93,15 +115,18 @@ impl<'s> Lexer<'s> {
                 _ => None,
             };
             if let Some(typ) = typ {
-                Next::Tok(Token {
-                    typ,
-                    span: ByteSpan::new(idx, chr.len(), self.src),
-                })
+                (
+                    Next::Tok(Token {
+                        typ,
+                        span: ByteSpan::new(idx, chr.len(), self.src),
+                    }),
+                    skip_by,
+                )
             } else {
-                Next::Char((idx, chr))
+                (Next::Char((idx, chr)), skip_by)
             }
         } else {
-            Next::Eof
+            (Next::Eof, skip_by)
         }
     }
 }
@@ -130,7 +155,7 @@ impl<'s> Iterator for Lexer<'s> {
 
         // skip until end of possible ident
         loop {
-            match self.peek_grapheme() {
+            match self.peek_grapheme().0 {
                 Next::Tok(_) | Next::Eof => {
                     // end of possible ident
                     break;
