@@ -1,6 +1,6 @@
 mod bump;
 
-use bump::BumpAlloc;
+use bitflags::bitflags;
 
 use crate::abi::{Align, Fields, Layout, Ty};
 use crate::capability::TaggedCapability;
@@ -8,14 +8,13 @@ use crate::exception::Exception;
 use crate::int::{UAddr, UNINIT_BYTE};
 use crate::mem::Memory;
 
+use bump::BumpAlloc;
+
 /* TODOO: temporal safety (this will do that allegedly)
 explore the following:
 - CHERIvoke
 - ViK: practical mitigation of temporal memory safety violations through object ID inspection
  */
-
-const INIT_ON_ALLOC: bool = true;
-const INIT_ON_FREE: bool = true;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -26,8 +25,6 @@ pub enum Strategy {
 }
 
 impl Strategy {
-    pub const SIZE: u8 = 1;
-
     pub const fn to_byte(self) -> u8 {
         self as u8
     }
@@ -55,14 +52,41 @@ impl Ty for Strategy {
     }
 }
 
+bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct InitFlags: u8 {
+        const INIT_ON_ALLOC = 0b00000001;
+        const INIT_ON_FREE = 0b00000010;
+    }
+}
+
+impl Ty for InitFlags {
+    const LAYOUT: Layout = Layout {
+        size: 1,
+        align: Align::new(1).unwrap(),
+    };
+
+    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
+        let bits = mem.read(src)?;
+        let flags =
+            Self::from_bits(bits).ok_or(Exception::InvalidAllocInitFlags { flags: bits })?;
+        Ok(flags)
+    }
+
+    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+        mem.write(dst, self.bits())
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Stats {
     pub strategy: Strategy,
+    pub flags: InitFlags,
     pub bytes_free: UAddr,
 }
 
 impl Stats {
-    const FIELDS: &'static [Layout] = &[Strategy::LAYOUT, UAddr::LAYOUT];
+    const FIELDS: &'static [Layout] = &[Strategy::LAYOUT, InitFlags::LAYOUT, UAddr::LAYOUT];
 }
 
 impl Ty for Stats {
@@ -71,9 +95,11 @@ impl Ty for Stats {
     fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
         let mut fields = Fields::new(src, Self::FIELDS);
         let strategy = fields.next().unwrap();
+        let flags = fields.next().unwrap();
         let bytes_free = fields.next().unwrap();
         Ok(Self {
             strategy: Strategy::read_from_mem(strategy, mem)?,
+            flags: InitFlags::read_from_mem(flags, mem)?,
             bytes_free: UAddr::read_from_mem(bytes_free, mem)?,
         })
     }
@@ -81,8 +107,10 @@ impl Ty for Stats {
     fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
         let mut fields = Fields::new(dst, Self::FIELDS);
         let strategy = fields.next().unwrap();
+        let flags = fields.next().unwrap();
         let bytes_free = fields.next().unwrap();
         self.strategy.write_to_mem(strategy, mem)?;
+        self.flags.write_to_mem(flags, mem)?;
         self.bytes_free.write_to_mem(bytes_free, mem)?;
         Ok(())
     }
@@ -110,18 +138,53 @@ impl From<AllocErr> for Exception {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+struct Header {
+    strat: Strategy,
+    flags: InitFlags,
+}
+
+impl Header {
+    const FIELDS: &'static [Layout] = &[Strategy::LAYOUT, InitFlags::LAYOUT];
+}
+
+impl Ty for Header {
+    const LAYOUT: Layout = Fields::layout(Self::FIELDS);
+
+    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
+        let mut fields = Fields::new(src, Self::FIELDS);
+        let strat = fields.next().unwrap();
+        let flags = fields.next().unwrap();
+        Ok(Self {
+            strat: Strategy::read_from_mem(strat, mem)?,
+            flags: InitFlags::read_from_mem(flags, mem)?,
+        })
+    }
+
+    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+        let mut fields = Fields::new(dst, Self::FIELDS);
+        let strat = fields.next().unwrap();
+        let flags = fields.next().unwrap();
+        self.strat.write_to_mem(strat, mem)?;
+        self.flags.write_to_mem(flags, mem)?;
+        Ok(())
+    }
+}
+
 pub fn init(
     strat: Strategy,
+    flags: InitFlags,
     mut region: TaggedCapability,
     mem: &mut Memory,
 ) -> Result<TaggedCapability, Exception> {
     /* TODOO: this must invalidate all capabilities matching 'region' before
      * returning to prevent caller from saving the capability and using it to
      * mess with the allocator */
+    let header = Header { strat, flags };
     region = region.set_addr(region.start());
     let mut ret = region;
-    mem.write(region, strat)?;
-    region = region.set_addr(region.addr().add(Strategy::LAYOUT.size));
+    mem.write(region, header)?;
+    region = region.set_addr(region.addr().add(Header::LAYOUT.size));
     let ator_cap = match strat {
         Strategy::Bump => {
             region = region.set_addr(region.addr().align_to(BumpAlloc::LAYOUT.align));
@@ -150,18 +213,18 @@ pub fn alloc(
      * returned by super::new. until capabilities can be sealed (and the
      * immutability of ator is guaranteed), this function is optimistic and
      * undermines everything :) */
-    let strat: Strategy = mem.read(ator)?;
-    ator = ator.set_addr(ator.addr().add(Strategy::LAYOUT.size));
-    let ation = match strat {
+    let header: Header = mem.read(ator)?;
+    ator = ator.set_addr(ator.addr().add(Header::LAYOUT.size));
+    let ation = match header.strat {
         Strategy::Bump => {
             ator = ator.set_addr(ator.addr().align_to(BumpAlloc::LAYOUT.align));
             let mut bump: BumpAlloc = mem.read(ator)?;
-            let ation = bump.alloc(layout)?;
+            let ation = bump.alloc(header, layout)?;
             mem.write(ator, bump)?;
             ation
         }
     };
-    if INIT_ON_ALLOC {
+    if header.flags.contains(InitFlags::INIT_ON_ALLOC) {
         mem.memset(ation, ation.capability().len(), UNINIT_BYTE)?;
     }
     Ok(ation)
@@ -177,13 +240,13 @@ pub fn free(
 
 pub fn free_all(mut ator: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
     // TODO: reading allocator is dup code
-    let strat: Strategy = mem.read(ator)?;
-    ator = ator.set_addr(ator.addr().add(Strategy::LAYOUT.size));
-    match strat {
+    let header: Header = mem.read(ator)?;
+    ator = ator.set_addr(ator.addr().add(Header::LAYOUT.size));
+    match header.strat {
         Strategy::Bump => {
             ator = ator.set_addr(ator.addr().align_to(BumpAlloc::LAYOUT.align));
             let mut bump: BumpAlloc = mem.read(ator)?;
-            bump.free_all(mem)?;
+            bump.free_all(header.flags, mem)?;
             mem.write(ator, bump)?;
         }
     }
@@ -192,13 +255,13 @@ pub fn free_all(mut ator: TaggedCapability, mem: &mut Memory) -> Result<(), Exce
 
 pub fn stat(mut ator: TaggedCapability, mem: &Memory) -> Result<Stats, Exception> {
     // TODO: reading allocator is dup code
-    let strat: Strategy = mem.read(ator)?;
-    ator = ator.set_addr(ator.addr().add(Strategy::LAYOUT.size));
-    let stat = match strat {
+    let header: Header = mem.read(ator)?;
+    ator = ator.set_addr(ator.addr().add(Header::LAYOUT.size));
+    let stat = match header.strat {
         Strategy::Bump => {
             ator = ator.set_addr(ator.addr().align_to(BumpAlloc::LAYOUT.align));
             let bump: BumpAlloc = mem.read(ator)?;
-            bump.stat()
+            bump.stat(header)
         }
     };
     Ok(stat)

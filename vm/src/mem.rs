@@ -6,7 +6,7 @@ use tracing::{span, Level};
 
 use crate::abi::{Align, Layout, Ty};
 use crate::access::MemAccessKind;
-use crate::alloc::{self, Strategy};
+use crate::alloc::{self, InitFlags, Strategy};
 use crate::capability::{Address, Capability, Granule, Permissions, TaggedCapability};
 use crate::exception::Exception;
 use crate::int::{UAddr, UGRAN_SIZE, UNINIT};
@@ -30,6 +30,7 @@ impl Memory {
             let stats = alloc::stat(ator, mem)?;
             tracing::trace!(
                 stats.strategy = format_args!("{:?}", stats.strategy),
+                stats.flags = format_args!("{:?}", stats.flags),
                 stats.bytes_free,
                 "allocator reports stats"
             );
@@ -87,8 +88,13 @@ impl Memory {
         };
         tracing::debug!("initializing root allocator");
         let root_alloc = {
-            alloc::init(Strategy::Bump, mem.root, &mut mem)
-                .context("failed to initialize root allocator")?
+            alloc::init(
+                Strategy::Bump,
+                InitFlags::INIT_ON_FREE | InitFlags::INIT_ON_ALLOC,
+                mem.root,
+                &mut mem,
+            )
+            .context("failed to initialize root allocator")?
         };
         log_stats(root_alloc, &mem)?;
 

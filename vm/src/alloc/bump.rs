@@ -1,4 +1,4 @@
-use super::{AllocErr, AllocErrKind, Stats, Strategy};
+use super::{AllocErr, AllocErrKind, Header, InitFlags, Stats};
 use crate::abi::{Fields, Layout, Ty};
 use crate::capability::TaggedCapability;
 use crate::exception::Exception;
@@ -7,7 +7,7 @@ use crate::mem::Memory;
 use crate::revoke;
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct BumpAlloc {
+pub(super) struct BumpAlloc {
     // start: region start
     // addr: first free address (grows upward) (yes ik bump allocs grow downward) or endb
     // endb: region endb
@@ -23,9 +23,10 @@ impl BumpAlloc {
         }
     }
 
-    pub const fn stat(&self) -> Stats {
+    pub const fn stat(&self, header: Header) -> Stats {
         Stats {
-            strategy: Strategy::Bump,
+            strategy: header.strat,
+            flags: header.flags,
             bytes_free: self.bytes_free(),
         }
     }
@@ -38,9 +39,9 @@ impl BumpAlloc {
             .expect("address must not exceed endb (but can be equal)")
     }
 
-    pub fn alloc(&mut self, layout: Layout) -> Result<TaggedCapability, AllocErr> {
+    pub fn alloc(&mut self, header: Header, layout: Layout) -> Result<TaggedCapability, AllocErr> {
         let err = |kind: AllocErrKind| AllocErr {
-            stats: self.stat(),
+            stats: self.stat(header),
             requested: layout,
             kind,
         };
@@ -58,10 +59,10 @@ impl BumpAlloc {
         }
     }
 
-    pub fn free_all(&mut self, mem: &mut Memory) -> Result<(), Exception> {
+    pub fn free_all(&mut self, flags: InitFlags, mem: &mut Memory) -> Result<(), Exception> {
         revoke::by_bounds(mem, self.inner.start(), self.inner.endb())?;
         self.inner = self.inner.set_addr(self.inner.start());
-        if super::INIT_ON_FREE {
+        if flags.contains(InitFlags::INIT_ON_FREE) {
             mem.memset(self.inner, self.inner.capability().len(), UNINIT_BYTE)?;
         }
         Ok(())

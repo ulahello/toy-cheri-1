@@ -11,6 +11,8 @@ pub enum Exception {
 
     InvalidAllocStrategy { byte: u8 },
 
+    InvalidAllocInitFlags { flags: u8 },
+
     InvalidMemAccess { access: MemAccess },
 
     InvalidRegAccess { access: RegAccess },
@@ -33,6 +35,10 @@ impl fmt::Display for Exception {
 
             Self::InvalidAllocStrategy { byte } => {
                 write!(f, "invalid allocation strategy {byte}")?;
+            }
+
+            Self::InvalidAllocInitFlags { flags } => {
+                write!(f, "invalid allocator init flags 0b{flags:0b}")?;
             }
 
             Self::InvalidMemAccess { access } => {
