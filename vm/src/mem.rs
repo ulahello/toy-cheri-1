@@ -27,7 +27,7 @@ impl Memory {
         init: I,
     ) -> anyhow::Result<Self> {
         fn log_stats(ator: TaggedCapability, mem: &Memory) -> anyhow::Result<()> {
-            let stats = alloc::stat(ator, mem)?;
+            let stats = alloc::stat(ator, mem).context("failed to stat allocator")?;
             tracing::trace!(
                 stats.strategy = format_args!("{:?}", stats.strategy),
                 stats.flags = format_args!("{:?}", stats.flags),
