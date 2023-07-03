@@ -87,7 +87,7 @@ impl<'s> Parser<'s> {
         } else {
             Err(ParseErr {
                 typ: ParseErrTyp::ExpectedTyp {
-                    expected: TokenTyp::Newline,
+                    expected: expect,
                     found: found.typ,
                 },
                 span: found.span,
