@@ -2,12 +2,13 @@ mod exception;
 
 use anyhow::Context;
 use argh::FromArgs;
+use nu_ansi_term::{Color, Style};
 use tracing::{span, Level};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
 use std::fs;
-use std::io::{stderr, Write};
+use std::io::{stderr, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -43,14 +44,7 @@ fn main() -> ExitCode {
     let args: Args = argh::from_env();
 
     if let Err(err) = try_main(&args) {
-        eprintln!("fatal error: {err}");
-        let chain = err.chain().skip(1);
-        if chain.len() != 0 {
-            eprintln!("context:");
-            for err in chain {
-                eprintln!("{padding}{err}", padding = " ".repeat(2));
-            }
-        }
+        _ = pretty_print_main_err(BufWriter::new(stderr()), err);
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS
@@ -80,16 +74,15 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
             let parser = Parser::new(&init_src);
             let mut ops = Vec::new();
             for try_op in parser {
-                let op = match try_op {
-                    Ok(op) => op,
+                match try_op {
+                    Ok(op) => ops.push(op),
                     Err(err) => {
-                        let mut err_out = stderr();
+                        let mut err_out = BufWriter::new(stderr());
                         pretty_print_parse_err(&mut err_out, &args.init, err)?;
                         writeln!(err_out)?;
                         anyhow::bail!(VmException::AssembleInit);
                     }
-                };
-                ops.push(op);
+                }
             }
             ops
         };
@@ -109,14 +102,53 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn pretty_print_main_err<W: Write>(mut f: W, err: anyhow::Error) -> anyhow::Result<()> {
+    let err_title = Color::Red.bold();
+    let err_body = Color::LightRed.bold();
+    let context_title = Style::new().bold();
+    let context_body = Style::new();
+    writeln!(
+        f,
+        "{}fatal error: {}{err}",
+        err_title.prefix(),
+        err_title.infix(err_body)
+    )?;
+    let chain = err.chain().skip(1);
+    if chain.len() != 0 {
+        writeln!(
+            f,
+            "{}context:{}",
+            err_body.infix(context_title),
+            context_title.infix(context_body)
+        )?;
+        for err in chain {
+            writeln!(f, "{padding}{err}", padding = " ".repeat(2))?;
+        }
+        write!(f, "{}", context_body.suffix())?;
+    }
+    f.flush()?;
+    Ok(())
+}
+
 fn pretty_print_parse_err<W: Write>(
     mut f: W,
     src_path: &Path,
     err: ParseErr<'_>,
 ) -> anyhow::Result<()> {
+    let err_title = Color::LightRed.bold();
+    let err_underline = err_title;
+    let err_body = Style::new().bold();
+    let text = Style::new();
+    let symbols = Color::Magenta.bold();
+
     let span = err.span;
 
-    write!(f, "assembler error: ")?;
+    write!(
+        f,
+        "{}assembler error:{} ",
+        err_title.prefix(),
+        err_title.infix(err_body)
+    )?;
 
     match err.typ {
         ParseErrTyp::Lex(err) => match err {
@@ -156,18 +188,33 @@ fn pretty_print_parse_err<W: Write>(
 
     writeln!(
         f,
-        "{side_padding}@ {src_path}:{line}:{col}",
+        "{side_padding}{}@{} {src_path}:{line}:{col}",
+        err_body.infix(symbols),
+        symbols.infix(text),
         src_path = src_path.display(),
     )?;
 
-    writeln!(f, "{line_padding}|")?;
     writeln!(
         f,
-        "{side_padding}{line}{side_padding}|{side_padding}{pre_span}{in_span}{post_span}",
+        "{line_padding}{}|{}",
+        text.infix(symbols),
+        symbols.infix(text)
     )?;
     writeln!(
         f,
-        "{line_padding}|{side_padding}{skip_pre}{fake_underline}",
+        "{side_padding}{}{line}{}{side_padding}{}|{}{side_padding}{pre_span}{in_span}{post_span}",
+        text.infix(symbols),
+        symbols.infix(text),
+        text.infix(symbols),
+        symbols.infix(text),
+    )?;
+    writeln!(
+        f,
+        "{line_padding}{}|{}{side_padding}{skip_pre}{}{fake_underline}{}",
+        text.infix(symbols),
+        symbols.infix(text),
+        text.infix(err_underline),
+        err_underline.suffix(),
         skip_pre = " ".repeat(UnicodeWidthStr::width(pre_span)),
         fake_underline = "^".repeat(UnicodeWidthStr::width(in_span)),
     )?;
