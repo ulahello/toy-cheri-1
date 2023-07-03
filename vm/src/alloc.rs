@@ -7,6 +7,7 @@ use crate::capability::TaggedCapability;
 use crate::exception::Exception;
 use crate::int::{UAddr, UNINIT_BYTE};
 use crate::mem::Memory;
+use crate::revoke;
 
 use bump::BumpAlloc;
 
@@ -177,9 +178,11 @@ pub fn init(
     mut region: TaggedCapability,
     mem: &mut Memory,
 ) -> Result<TaggedCapability, Exception> {
-    /* TODOO: this must invalidate all capabilities matching 'region' before
-     * returning to prevent caller from saving the capability and using it to
-     * mess with the allocator */
+    /* NOTE: invalidate all capabilities matching 'region' before returning to
+     * prevent caller from saving the capability and using it to mess with the
+     * allocator */
+    revoke::by_bounds(mem, region.start(), region.endb())?;
+
     let header = Header { strat, flags };
     region = region.set_addr(region.start());
     let mut ret = region;
