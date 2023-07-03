@@ -83,15 +83,13 @@ impl Memory {
             valid: true,
         };
         tracing::debug!("initializing root allocator");
-        let root_alloc = {
-            alloc::init(
-                Strategy::Bump,
-                InitFlags::INIT_ON_FREE | InitFlags::INIT_ON_ALLOC,
-                mem.root,
-                &mut mem,
-            )
-            .context("failed to initialize root allocator")?
-        };
+        let root_alloc = alloc::init(
+            Strategy::Bump,
+            InitFlags::INIT_ON_FREE | InitFlags::INIT_ON_ALLOC,
+            mem.root,
+            &mut mem,
+        )
+        .context("failed to initialize root allocator")?;
         log_stats(root_alloc, &mem)?;
 
         // write init program
