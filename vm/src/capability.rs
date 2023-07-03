@@ -210,9 +210,6 @@ impl Ty for Capability {
     }
 }
 
-/* TODO: this essentially describes a usize index into tag controller. it might
- * be dangerous to use this in api because the thing that this represents could
- * change behind its back. its like a reference but cached. */
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[must_use]
 pub struct TaggedCapability {
