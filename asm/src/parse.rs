@@ -11,11 +11,34 @@ pub struct ParseErr<'s> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TokenClass {
+    Op,
+    Register,
+    Syscall,
+}
+
+impl TokenTyp {
+    pub const fn classify(self) -> Option<TokenClass> {
+        match self {
+            Self::Op(_) => Some(TokenClass::Op),
+            Self::Register(_) => Some(TokenClass::Register),
+            Self::Syscall(_) => Some(TokenClass::Syscall),
+            Self::Comma | Self::Newline | Self::Eof => None,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParseErrTyp {
     Lex(LexErrTyp),
-    ExpectOp { found: TokenTyp },
-    MissingNewline { found: TokenTyp },
-    MissingComma { found: TokenTyp },
+    ExpectedTyp {
+        expected: TokenTyp,
+        found: TokenTyp,
+    },
+    ExpectedClass {
+        expected: TokenClass,
+        found: TokenTyp,
+    },
     InvalidOperand,
 }
 
@@ -49,36 +72,33 @@ impl<'s> Parser<'s> {
         match tok.typ {
             TokenTyp::Op(kind) => Ok(kind),
             found => Err(ParseErr {
-                typ: ParseErrTyp::ExpectOp { found },
+                typ: ParseErrTyp::ExpectedClass {
+                    expected: TokenClass::Op,
+                    found,
+                },
                 span: tok.span,
             }),
         }
     }
 
-    fn expect_newline(tok: Token<'s>) -> Result<(), ParseErr<'s>> {
-        match tok.typ {
-            TokenTyp::Newline => Ok(()),
-            found => Err(ParseErr {
-                typ: ParseErrTyp::MissingNewline { found },
-                span: tok.span,
-            }),
-        }
-    }
-
-    fn expect_comma(tok: Token<'s>) -> Result<(), ParseErr<'s>> {
-        match tok.typ {
-            TokenTyp::Comma => Ok(()),
-            found => Err(ParseErr {
-                typ: ParseErrTyp::MissingComma { found },
-                span: tok.span,
-            }),
+    fn expect_typ(expect: TokenTyp, found: Token<'s>) -> Result<(), ParseErr<'s>> {
+        if found.typ == expect {
+            Ok(())
+        } else {
+            Err(ParseErr {
+                typ: ParseErrTyp::ExpectedTyp {
+                    expected: TokenTyp::Newline,
+                    found: found.typ,
+                },
+                span: found.span,
+            })
         }
     }
 
     fn expect_operand(&mut self, last: bool) -> Result<TaggedCapability, ParseErr<'s>> {
         let try_operand = self.expect_token()?;
         if !last {
-            Self::expect_comma(self.expect_token()?)?;
+            Self::expect_typ(TokenTyp::Comma, self.expect_token()?)?;
         }
         let tcap = match try_operand.typ {
             TokenTyp::Register(reg) => {
@@ -136,7 +156,7 @@ impl<'s> Parser<'s> {
         };
 
         // verify that operation ends with newline
-        Self::expect_newline(self.expect_token()?)?;
+        Self::expect_typ(TokenTyp::Newline, self.expect_token()?)?;
 
         Ok(op)
     }

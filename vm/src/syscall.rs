@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::exception::Exception;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -18,5 +20,14 @@ impl SyscallKind {
             0 => Ok(Self::Exit),
             _ => Err(Exception::InvalidSyscall { byte }),
         }
+    }
+}
+
+impl fmt::Display for SyscallKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::Exit => "exit",
+        };
+        f.write_str(s)
     }
 }

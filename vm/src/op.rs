@@ -60,6 +60,17 @@ impl Ty for OpKind {
     }
 }
 
+impl fmt::Display for OpKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::Nop => "nop",
+            Self::LoadI => "loadi",
+            Self::Syscall => "syscall",
+        };
+        f.write_str(s)
+    }
+}
+
 /* TODOO: we cant know addresses of everything before we load into mem. encoded
  * ops cant be tagged. their validity must be rebuilt from some sort of root
  * capability passed to the program. */

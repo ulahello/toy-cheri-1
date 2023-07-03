@@ -1,5 +1,4 @@
 use core::fmt;
-use std::io;
 
 use crate::access::{MemAccess, RegAccess};
 use crate::alloc::{AllocErr, AllocErrKind};
@@ -117,33 +116,3 @@ impl fmt::Display for Exception {
 }
 
 impl std::error::Error for Exception {}
-
-#[derive(Debug)]
-pub enum VmException {
-    Userspace(Exception),
-    Io(io::Error),
-}
-
-impl fmt::Display for VmException {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Userspace(err) => write!(f, "userspace exception: {err}")?,
-            Self::Io(err) => write!(f, "input/output: {err}")?,
-        }
-        Ok(())
-    }
-}
-
-impl From<io::Error> for VmException {
-    fn from(io: io::Error) -> Self {
-        Self::Io(io)
-    }
-}
-
-impl From<Exception> for VmException {
-    fn from(user: Exception) -> Self {
-        Self::Userspace(user)
-    }
-}
-
-impl std::error::Error for VmException {}
