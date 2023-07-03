@@ -4,7 +4,7 @@ use core::fmt::{self, Write};
 use crate::abi::{Align, Layout, Ty};
 use crate::access::{MemAccess, MemAccessKind};
 use crate::exception::Exception;
-use crate::int::{UAddr, UGran, UGRAN_SIZE};
+use crate::int::{UAddr, UGran, UGRAN_SIZE, UNINIT};
 use crate::mem::Memory;
 
 /* TODOOO: implement sealed capabilities using metadata */
@@ -104,7 +104,7 @@ pub struct Capability {
 
 impl Capability {
     pub const INVALID: Self = {
-        const LITERALLY_ANY_ADDRESS: Address = Address(0);
+        const LITERALLY_ANY_ADDRESS: Address = Address(UNINIT);
         Self {
             addr: LITERALLY_ANY_ADDRESS,
             start: LITERALLY_ANY_ADDRESS,
