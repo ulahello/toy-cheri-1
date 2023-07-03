@@ -119,7 +119,12 @@ fn pretty_print_main_err<W: Write>(mut f: W, err: anyhow::Error) -> anyhow::Resu
             context_title.infix(context_body)
         )?;
         for err in chain {
-            writeln!(f, "{padding}{err}", padding = " ".repeat(2))?;
+            writeln!(
+                f,
+                " {}^{} {err}",
+                context_body.infix(context_title),
+                context_title.infix(context_body),
+            )?;
         }
         write!(f, "{}", context_body.suffix())?;
     }
