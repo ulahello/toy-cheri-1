@@ -200,7 +200,8 @@ pub fn init(
     Ok(ret)
 }
 
-pub fn deinit(_ator: TaggedCapability, _mem: &mut Memory) -> Result<TaggedCapability, Exception> {
+pub fn deinit(ator: TaggedCapability, mem: &mut Memory) -> Result<TaggedCapability, Exception> {
+    free_all(ator, mem)?;
     todo!()
 }
 
