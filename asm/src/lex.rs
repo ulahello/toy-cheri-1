@@ -161,30 +161,25 @@ impl<'s> Lexer<'s> {
         };
 
         /* fill context-dependent span for as long as we can */
-        loop {
-            match self.graphs.peek().copied() {
-                Some((_, chr)) => {
-                    if Self::check_no_ctx(chr).is_some() {
-                        /* can't keep filling ctx. checking context-independent
-                         * tokens incidentally prevents these spans from
-                         * breaking into subsequent lines. */
-                        break;
-                    }
-                    if chr.chars().all(char::is_whitespace) {
-                        // ctx delimited by whitespace, can't keep filling.
-                        break;
-                    }
-                    if chr == COMMENT {
-                        // start of comment, can't keep filling.
-                        break;
-                    }
-
-                    ctx.len += chr.len();
-                    self.graphs.next();
-                    continue;
-                }
-                None => break,
+        while let Some((_, chr)) = self.graphs.peek().copied() {
+            if Self::check_no_ctx(chr).is_some() {
+                /* can't keep filling ctx. checking context-independent
+                 * tokens incidentally prevents these spans from
+                 * breaking into subsequent lines. */
+                break;
             }
+            if chr.chars().all(char::is_whitespace) {
+                // ctx delimited by whitespace, can't keep filling.
+                break;
+            }
+            if chr == COMMENT {
+                // start of comment, can't keep filling.
+                break;
+            }
+
+            ctx.len += chr.len();
+            self.graphs.next();
+            continue;
         }
 
         /* check context-dependent span! */

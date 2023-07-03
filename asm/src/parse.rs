@@ -59,7 +59,7 @@ impl<'s> Parser<'s> {
         match self.lexer.next() {
             Some(Ok(tok)) => Ok(tok),
             Some(Err(lex_err)) => {
-                return Err(ParseErr {
+                Err(ParseErr {
                     typ: ParseErrTyp::Lex(lex_err.typ),
                     span: lex_err.span,
                 })

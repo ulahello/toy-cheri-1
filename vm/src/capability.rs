@@ -192,6 +192,7 @@ impl Capability {
         self.perms
     }
 
+    #[allow(clippy::len_without_is_empty)]
     pub const fn len(&self) -> UAddr {
         self.endb().get().saturating_sub(self.start().get())
     }
