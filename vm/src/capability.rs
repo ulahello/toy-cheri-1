@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 use core::cmp::Ordering;
 use core::fmt::{self, Write};
 
@@ -109,11 +111,7 @@ impl Capability {
             addr: LITERALLY_ANY_ADDRESS,
             start: LITERALLY_ANY_ADDRESS,
             endb: LITERALLY_ANY_ADDRESS,
-            perms: Permissions {
-                r: false,
-                w: false,
-                x: false,
-            },
+            perms: Permissions::empty(),
         }
     };
 
@@ -144,7 +142,7 @@ impl Capability {
                     & (UGran::MAX >> (UGran::BITS - Address::BITS as u32)))
                     as UAddr,
             ),
-            perms: Permissions::from_data(
+            perms: Permissions::from_bits_truncate(
                 ((ugran >> (Address::BITS * 3))
                     & (UGran::MAX >> (UGran::BITS - Permissions::BITS as u32)))
                     as _,
@@ -157,7 +155,7 @@ impl Capability {
         self.addr.get() as UGran
             | (self.start.get() as UGran) << (Address::BITS * 1)
             | (self.endb.get() as UGran) << (Address::BITS * 2)
-            | (self.perms.to_data() as UGran) << (Address::BITS * 3)
+            | (self.perms.bits() as UGran) << (Address::BITS * 3)
     }
 
     pub const fn is_bounded(&self) -> bool {
@@ -299,9 +297,9 @@ impl TaggedCapability {
 
     pub const fn set_perms(self, perms: Permissions) -> Self {
         // new perms are valid if they at most disable a permission.
-        let valid_is_valid = (!perms.x || self.capa.perms.x)
-            && (!perms.w || self.capa.perms.w)
-            && (!perms.r || self.capa.perms.r);
+        let valid_is_valid = (!perms.x() || self.capa.perms.x())
+            && (!perms.w() || self.capa.perms.w())
+            && (!perms.r() || self.capa.perms.r());
         Self {
             capa: Capability {
                 addr: self.capa.addr,
@@ -385,43 +383,45 @@ impl fmt::Debug for TaggedCapability {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Permissions {
-    pub r: bool,
-    pub w: bool,
-    pub x: bool,
+bitflags! {
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct Permissions: u8 {
+        const READ = 0b00000001;
+        const WRITE = 0b00000010;
+        const EXEC = 0b00000100;
+    }
 }
 
 impl Permissions {
     pub const BITS: u8 = 3;
 
+    pub const fn r(self) -> bool {
+        self.contains(Self::READ)
+    }
+
+    pub const fn w(self) -> bool {
+        self.contains(Self::WRITE)
+    }
+
+    pub const fn x(self) -> bool {
+        self.contains(Self::EXEC)
+    }
+
     pub const fn grants_access(&self, kind: MemAccessKind) -> bool {
         match kind {
-            MemAccessKind::Read => self.r,
-            MemAccessKind::Write => self.w,
-            MemAccessKind::Execute => self.x,
+            MemAccessKind::Read => self.r(),
+            MemAccessKind::Write => self.w(),
+            MemAccessKind::Execute => self.x(),
         }
-    }
-
-    pub const fn from_data(data: u8) -> Self {
-        Self {
-            r: (data & (1 << 0)) != 0,
-            w: (data & (1 << 1)) != 0,
-            x: (data & (1 << 2)) != 0,
-        }
-    }
-
-    pub const fn to_data(self) -> u8 {
-        (self.r as u8) | ((self.w as u8) << 1) | ((self.x as u8) << 2)
     }
 }
 
 impl fmt::Display for Permissions {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         const NOPE: char = '-';
-        f.write_char(if self.r { 'r' } else { NOPE })?;
-        f.write_char(if self.w { 'w' } else { NOPE })?;
-        f.write_char(if self.x { 'x' } else { NOPE })?;
+        f.write_char(if self.r() { 'r' } else { NOPE })?;
+        f.write_char(if self.w() { 'w' } else { NOPE })?;
+        f.write_char(if self.x() { 'x' } else { NOPE })?;
         Ok(())
     }
 }

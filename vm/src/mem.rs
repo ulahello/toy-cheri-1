@@ -78,11 +78,7 @@ impl Memory {
                 Address(0),
                 Address(0),
                 Address(UAddr::try_from(mem_len).expect("converted from UAddr to usize at start of Memory::new, so converting back to UAddr is infallible")),
-                Permissions {
-                    r: true,
-                    w: true,
-                    x: true,
-                },
+                Permissions::READ | Permissions::WRITE | Permissions::EXEC,
             ),
             valid: true,
         };
@@ -109,25 +105,14 @@ impl Memory {
             &mut mem,
         )
         .context("failed to allocate program")?
-        .set_perms(Permissions {
-            r: false,
-            w: true,
-            x: false,
-        });
+        .set_perms(Permissions::WRITE);
         log_stats(root_alloc, &mem)?;
         tracing::debug!(pc = pc.addr().get(), "writing init program to memory");
         mem.write_iter(pc, init)
             .context("failed to write init program to root address")?;
 
         // remove write access
-        pc = pc.set_perms_from(
-            Permissions {
-                r: true,
-                w: false,
-                x: true,
-            },
-            mem.root,
-        );
+        pc = pc.set_perms_from(Permissions::READ | Permissions::EXEC, mem.root);
         mem.regs
             .write(&mut mem.tags, Register::Pc as _, pc)
             .unwrap();
