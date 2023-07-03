@@ -52,40 +52,11 @@ fn main() -> ExitCode {
 }
 
 fn try_main(args: &Args) -> anyhow::Result<()> {
-    let span1 = span!(Level::TRACE, "main", granules = args.granules);
-    let _guard1 = span1.enter();
+    let span = span!(Level::TRACE, "main", granules = args.granules);
+    let _guard = span.enter();
 
     let mut mem = {
-        let init: Vec<Op> = {
-            let span2 = span!(
-                Level::TRACE,
-                "load_init",
-                path = format_args!("{}", args.init.display())
-            );
-            let _guard2 = span2.enter();
-
-            tracing::debug!("loading init program");
-
-            tracing::trace!("reading init program");
-            let init_src =
-                fs::read_to_string(&args.init).context("failed to read init program source")?;
-
-            tracing::trace!("assembling init program");
-            let parser = Parser::new(&init_src);
-            let mut ops = Vec::new();
-            for try_op in parser {
-                match try_op {
-                    Ok(op) => ops.push(op),
-                    Err(err) => {
-                        let mut err_out = BufWriter::new(stderr());
-                        pretty_print_parse_err(&mut err_out, &args.init, err)?;
-                        writeln!(err_out)?;
-                        anyhow::bail!(VmException::AssembleInit);
-                    }
-                }
-            }
-            ops
-        };
+        let init: Vec<Op> = assemble_init(&args.init).context("failed to load init program")?;
 
         Memory::new(args.granules, init.iter()).context("failed to instantiate memory")?
     };
@@ -100,6 +71,36 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
     }
     tracing::info!("execution halted");
     Ok(())
+}
+
+fn assemble_init(init: &Path) -> anyhow::Result<Vec<Op>> {
+    let span = span!(
+        Level::TRACE,
+        "load_init",
+        path = format_args!("{}", init.display())
+    );
+    let _guard = span.enter();
+
+    tracing::debug!("loading init program");
+
+    tracing::trace!("reading init program");
+    let init_src = fs::read_to_string(init).context("failed to read init program source")?;
+
+    tracing::trace!("assembling init program");
+    let parser = Parser::new(&init_src);
+    let mut ops = Vec::new();
+    for try_op in parser {
+        match try_op {
+            Ok(op) => ops.push(op),
+            Err(err) => {
+                let mut err_out = BufWriter::new(stderr());
+                pretty_print_parse_err(&mut err_out, init, err)?;
+                writeln!(err_out)?;
+                anyhow::bail!(VmException::AssembleInit);
+            }
+        }
+    }
+    Ok(ops)
 }
 
 fn pretty_print_main_err<W: Write>(mut f: W, err: anyhow::Error) -> anyhow::Result<()> {
