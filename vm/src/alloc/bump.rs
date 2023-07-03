@@ -15,7 +15,7 @@ pub(super) struct BumpAlloc {
 }
 
 impl BumpAlloc {
-    const FIELDS: &'static [Layout] = &[TaggedCapability::LAYOUT, UAddr::LAYOUT];
+    const FIELDS: &'static [Layout] = &[TaggedCapability::LAYOUT];
 
     pub const fn new(region: TaggedCapability) -> Self {
         Self {
