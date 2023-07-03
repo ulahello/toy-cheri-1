@@ -68,14 +68,14 @@ impl Ty for InitFlags {
     };
 
     fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        let bits = mem.read(src)?;
+        let bits: u8 = mem.read(src)?;
         let flags =
             Self::from_bits(bits).ok_or(Exception::InvalidAllocInitFlags { flags: bits })?;
         Ok(flags)
     }
 
     fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        mem.write(dst, self.bits())
+        mem.write::<u8>(dst, self.bits())
     }
 }
 
