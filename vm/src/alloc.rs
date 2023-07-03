@@ -8,6 +8,8 @@ use crate::exception::Exception;
 use crate::int::UAddr;
 use crate::mem::Memory;
 
+/* TODOO: alloc on free, alloc on init */
+
 /* TODOO: temporal safety (this will do that allegedly)
 explore the following:
 - CHERIvoke
