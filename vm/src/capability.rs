@@ -1,5 +1,5 @@
-use core::fmt;
-use std::fmt::Write;
+use core::cmp::Ordering;
+use core::fmt::{self, Write};
 
 use crate::abi::{Align, Layout, Ty};
 use crate::access::{MemAccess, MemAccessKind};
@@ -59,13 +59,13 @@ impl PartialEq for Address {
 impl Eq for Address {}
 
 impl PartialOrd for Address {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.get().partial_cmp(&other.get())
     }
 }
 
 impl Ord for Address {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.get().cmp(&other.get())
     }
 }
