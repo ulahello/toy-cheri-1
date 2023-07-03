@@ -53,7 +53,6 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
 
     let mut mem = {
         let init: Vec<Op> = assemble_init(&args.init).context("failed to load init program")?;
-
         Memory::new(args.granules, init.iter()).context("failed to instantiate memory")?
     };
 
@@ -66,6 +65,7 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
         }
     }
     tracing::info!("execution halted");
+
     Ok(())
 }
 
@@ -104,12 +104,14 @@ fn pretty_print_main_err<W: Write>(mut f: W, err: anyhow::Error) -> anyhow::Resu
     let err_body = Color::LightRed.bold();
     let context_title = Style::new().bold();
     let context_body = Style::new();
+
     writeln!(
         f,
         "{}fatal error: {}{err}",
         err_title.prefix(),
         err_title.infix(err_body)
     )?;
+
     let chain = err.chain().skip(1);
     if chain.len() != 0 {
         writeln!(
@@ -128,6 +130,7 @@ fn pretty_print_main_err<W: Write>(mut f: W, err: anyhow::Error) -> anyhow::Resu
         }
         write!(f, "{}", context_body.suffix())?;
     }
+
     f.flush()?;
     Ok(())
 }
