@@ -27,7 +27,7 @@ impl Registers {
         } else {
             tags.read_reg(reg).unwrap()
         };
-        Ok(TaggedCapability { capa, valid })
+        Ok(TaggedCapability::new(capa, valid))
     }
 
     pub fn read_untagged(&self, reg: u8) -> Result<Capability, Exception> {

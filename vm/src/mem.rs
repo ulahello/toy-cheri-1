@@ -73,15 +73,15 @@ impl Memory {
         /* instantiate init program */
         // set up root capability
         tracing::debug!("acquiring root capability");
-        mem.root = TaggedCapability {
-            capa: Capability::new(
+        mem.root = TaggedCapability ::new(
+            Capability::new(
                 Address(0),
                 Address(0),
                 Address(UAddr::try_from(mem_len).expect("converted from UAddr to usize at start of Memory::new, so converting back to UAddr is infallible")),
                 Permissions::READ | Permissions::WRITE | Permissions::EXEC,
             ),
-            valid: true,
-        };
+             true,
+        );
         tracing::debug!("initializing root allocator");
         let root_alloc = alloc::init(
             Strategy::Bump,

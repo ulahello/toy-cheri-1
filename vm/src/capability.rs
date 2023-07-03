@@ -216,8 +216,8 @@ impl Ty for Capability {
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[must_use]
 pub struct TaggedCapability {
-    pub(crate) capa: Capability,
-    pub(crate) valid: bool,
+    capa: Capability,
+    valid: bool,
 }
 
 impl TaggedCapability {
