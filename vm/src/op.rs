@@ -1,7 +1,7 @@
 use core::fmt;
 
 use crate::abi::{Align, Fields, Layout, Ty};
-use crate::capability::{Capability, TaggedCapability};
+use crate::capability::TaggedCapability;
 use crate::exception::Exception;
 use crate::mem::Memory;
 
@@ -87,11 +87,8 @@ impl Op {
     pub const fn loadi(dst: u8, imm: TaggedCapability) -> Self {
         Self {
             kind: OpKind::LoadI,
-            op1: TaggedCapability {
-                capa: Capability::from_ugran(dst as _),
-                valid: false,
-            }, // register destination
-            op2: imm, // immediate value
+            op1: TaggedCapability::from_ugran(dst as _), // register destination
+            op2: imm,                                    // immediate value
             op3: TaggedCapability::INVALID,
         }
     }

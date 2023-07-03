@@ -239,6 +239,10 @@ impl TaggedCapability {
         }
     }
 
+    pub const fn from_ugran(ugran: UGran) -> Self {
+        Self::new(Capability::from_ugran(ugran), false)
+    }
+
     pub const fn capability(self) -> Capability {
         self.capa
     }

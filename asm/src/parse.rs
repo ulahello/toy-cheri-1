@@ -1,4 +1,4 @@
-use fruticose_vm::capability::{Capability, TaggedCapability};
+use fruticose_vm::capability::TaggedCapability;
 use fruticose_vm::op::{Op, OpKind};
 
 use crate::lex::{ByteSpan, LexErrTyp, Lexer, Token, TokenTyp};
@@ -80,11 +80,11 @@ impl<'s> Parser<'s> {
         let tcap = match try_operand.typ {
             TokenTyp::Register(reg) => {
                 // register as operand is inlined to its identifying byte representation
-                TaggedCapability::new(Capability::from_ugran(reg as _), false)
+                TaggedCapability::from_ugran(reg as _)
             }
             TokenTyp::Syscall(syscall) => {
                 // syscall kind as operand is inlined to its byte representation
-                TaggedCapability::new(Capability::from_ugran(syscall as _), false)
+                TaggedCapability::from_ugran(syscall as _)
             }
             TokenTyp::Ident => {
                 todo!("make sense of identifiers")

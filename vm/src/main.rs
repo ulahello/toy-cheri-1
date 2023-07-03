@@ -54,7 +54,7 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
         Op::nop(),
         Op::loadi(
             Register::A0 as _,
-            TaggedCapability::new(Capability::from_ugran(SyscallKind::Exit as _), false),
+            TaggedCapability::from_ugran(SyscallKind::Exit as _),
         ),
         Op::syscall(),
     ];

@@ -1,4 +1,4 @@
-use fruticose_vm::capability::{Capability, TaggedCapability};
+use fruticose_vm::capability::TaggedCapability;
 use fruticose_vm::op::{Op, OpKind};
 use fruticose_vm::registers::Register;
 use fruticose_vm::syscall::SyscallKind;
@@ -92,7 +92,7 @@ fn exit_parse() {
         parser.next(),
         Some(Ok(Op::loadi(
             Register::A0 as _,
-            TaggedCapability::new(Capability::from_ugran(SyscallKind::Exit as _), false),
+            TaggedCapability::from_ugran(SyscallKind::Exit as _),
         )))
     );
     assert_eq!(parser.next(), Some(Ok(Op::syscall())));
