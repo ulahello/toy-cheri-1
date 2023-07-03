@@ -1,10 +1,9 @@
-use super::{AllocErr, AllocErrKind, Header, InitFlags, Stats};
+use super::{AllocErr, AllocErrKind, Header, Stats};
 use crate::abi::{Fields, Layout, Ty};
 use crate::capability::TaggedCapability;
 use crate::exception::Exception;
-use crate::int::{UAddr, UNINIT_BYTE};
+use crate::int::UAddr;
 use crate::mem::Memory;
-use crate::revoke;
 
 #[derive(Clone, Copy, Debug)]
 pub(super) struct BumpAlloc {
