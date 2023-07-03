@@ -3,7 +3,7 @@ pub mod lex;
 pub mod parse;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 /// Rich representation of source text span.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
