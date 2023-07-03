@@ -123,10 +123,10 @@ fn pretty_print_parse_err<W: Write>(
             LexErrTyp::UnknownIdent => write!(f, "unknown identifier")?,
         },
         ParseErrTyp::ExpectedTyp { expected, found } => {
-            write!(f, "expected {expected} but found {found}")?;
+            write!(f, "expected {expected}, but found {found}")?;
         }
         ParseErrTyp::ExpectedClass { expected, found } => {
-            write!(f, "expected {expected} but found ")?;
+            write!(f, "expected {expected}, but found ")?;
             if let Some(class) = found.classify() {
                 write!(f, "{class}")?;
             } else {
