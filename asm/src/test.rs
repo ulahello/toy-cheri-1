@@ -1,10 +1,13 @@
-use crate::lex::{ByteSpan, Lexer, Token, TokenTyp};
-use fruticose_vm::op::OpKind;
+use fruticose_vm::capability::{Capability, TaggedCapability};
+use fruticose_vm::op::{Op, OpKind};
 use fruticose_vm::registers::Register;
 use fruticose_vm::syscall::SyscallKind;
 
+use crate::lex::{ByteSpan, Lexer, Token, TokenTyp};
+use crate::parse::Parser;
+
 #[test]
-fn exit() {
+fn exit_lex() {
     let src = include_str!("../examples/exit.asm");
     let mut lexer = Lexer::new(src);
     assert_eq!(
@@ -70,5 +73,28 @@ fn exit() {
             span: ByteSpan::new(49, 1, src)
         }))
     );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Eof,
+            span: ByteSpan::new(50, 0, src)
+        }))
+    );
     assert_eq!(lexer.next(), None);
+}
+
+#[test]
+fn exit_parse() {
+    let src = include_str!("../examples/exit.asm");
+    let mut parser = Parser::new(src);
+    assert_eq!(parser.next(), Some(Ok(Op::nop())));
+    assert_eq!(
+        parser.next(),
+        Some(Ok(Op::loadi(
+            Register::A0 as _,
+            TaggedCapability::new(Capability::from_ugran(SyscallKind::Exit as _), false),
+        )))
+    );
+    assert_eq!(parser.next(), Some(Ok(Op::syscall())));
+    assert_eq!(parser.next(), None);
 }

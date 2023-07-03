@@ -5,7 +5,6 @@ use unicode_segmentation::{GraphemeIndices, UnicodeSegmentation};
 
 use core::iter::Peekable;
 
-// TODO: copypasted from `sw`. does this merit a lib?
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct ByteSpan<'s> {
     start: usize,
@@ -17,16 +16,6 @@ impl<'s> ByteSpan<'s> {
     #[must_use]
     pub const fn new(start: usize, len: usize, s: &'s str) -> Self {
         Self { start, len, src: s }
-    }
-
-    pub fn shift_start_left(&mut self, bytes: usize) {
-        self.start -= bytes;
-        self.len += bytes;
-    }
-
-    pub fn shift_start_right(&mut self, bytes: usize) {
-        self.start += bytes;
-        self.len -= bytes;
     }
 
     pub fn get(&self) -> &'s str {
@@ -48,12 +37,13 @@ pub enum TokenTyp {
     Ident,
     Comma,
     Newline,
+    Eof,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LexErr<'s> {
-    typ: LexErrTyp,
-    span: ByteSpan<'s>,
+    pub(crate) typ: LexErrTyp,
+    pub(crate) span: ByteSpan<'s>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,12 +52,12 @@ pub enum LexErrTyp {}
 pub struct Lexer<'s> {
     graphs: Peekable<GraphemeIndices<'s>>,
     src: &'s str,
+    eof: bool, // true after next yields Eof
 }
 
 enum Next<'s> {
     Tok(Token<'s>),
     Char((usize, &'s str)),
-    Eof,
 }
 
 impl<'s> Lexer<'s> {
@@ -75,6 +65,7 @@ impl<'s> Lexer<'s> {
         Self {
             graphs: UnicodeSegmentation::grapheme_indices(src, true).peekable(),
             src,
+            eof: false,
         }
     }
 
@@ -83,10 +74,21 @@ impl<'s> Lexer<'s> {
         for _ in 0..skip_by {
             self.graphs.next();
         }
+        if let Next::Tok(Token {
+            typ: TokenTyp::Eof,
+            span: _,
+        }) = next
+        {
+            self.eof = true;
+        }
         next
     }
 
     fn peek_grapheme(&mut self) -> (Next<'s>, usize) {
+        let eof = Token {
+            typ: TokenTyp::Eof,
+            span: ByteSpan::new(self.src.len(), 0, self.src),
+        };
         let mut skip_by = 1;
         if let Some((mut idx, mut chr)) = self.graphs.peek().copied() {
             // skip comments
@@ -99,7 +101,9 @@ impl<'s> Lexer<'s> {
                             chr = new_chr;
                             break;
                         }
-                        None => return (Next::Eof, skip_by),
+                        None => {
+                            return (Next::Tok(eof), skip_by);
+                        }
                         _ => {
                             skip_by += 1;
                             continue;
@@ -126,7 +130,7 @@ impl<'s> Lexer<'s> {
                 (Next::Char((idx, chr)), skip_by)
             }
         } else {
-            (Next::Eof, skip_by)
+            (Next::Tok(eof), skip_by)
         }
     }
 }
@@ -135,6 +139,10 @@ impl<'s> Iterator for Lexer<'s> {
     type Item = Result<Token<'s>, LexErr<'s>>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.eof {
+            return None;
+        }
+
         // skip into non-whitespace
         let (idx, chr) = loop {
             match self.consume_grapheme() {
@@ -147,7 +155,6 @@ impl<'s> Iterator for Lexer<'s> {
                         break (idx, chr);
                     }
                 }
-                Next::Eof => return None,
             }
         };
 
@@ -156,7 +163,7 @@ impl<'s> Iterator for Lexer<'s> {
         // skip until end of possible ident
         loop {
             match self.peek_grapheme().0 {
-                Next::Tok(_) | Next::Eof => {
+                Next::Tok(_) => {
                     // end of possible ident
                     break;
                 }

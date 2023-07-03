@@ -36,7 +36,7 @@ impl OpKind {
         }
     }
 
-    pub const fn arg_count(self) -> u8 {
+    pub const fn operand_count(self) -> u8 {
         match self {
             Self::Nop => 0,
             Self::LoadI => 2,
@@ -73,7 +73,7 @@ pub struct Op {
 
 impl Op {
     /* TODO: currently implemented as constant size, but variable size is more
-     * memory efficient because not all args are always needed */
+     * memory efficient because not all operands are always needed */
 
     pub const fn nop() -> Self {
         Self {
@@ -152,10 +152,31 @@ impl fmt::Debug for Op {
         dbg.field("kind", &self.kind);
         for (i, op) in [self.op1, self.op2, self.op3].into_iter().enumerate() {
             let i = i as u8;
-            if i < self.kind.arg_count() {
+            if i < self.kind.operand_count() {
                 dbg.field(&format!("op{i}", i = i + 1), &op);
             }
         }
         dbg.finish()
     }
 }
+
+impl PartialEq for Op {
+    fn eq(&self, other: &Op) -> bool {
+        // unused fields are ignored
+        let ops = [
+            (&self.op1, &other.op1),
+            (&self.op2, &other.op2),
+            (&self.op3, &other.op3),
+        ];
+        let mut acc = self.kind == other.kind;
+        for (me, you) in ops.into_iter().take(self.kind.operand_count().into()) {
+            if !acc {
+                return false;
+            }
+            acc &= me == you;
+        }
+        acc
+    }
+}
+
+impl Eq for Op {}
