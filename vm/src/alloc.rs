@@ -250,7 +250,11 @@ pub fn free_all(mut ator: TaggedCapability, mem: &mut Memory) -> Result<(), Exce
         Strategy::Bump => {
             ator = ator.set_addr(ator.addr().align_to(BumpAlloc::LAYOUT.align));
             let mut bump: BumpAlloc = mem.read(ator)?;
-            bump.free_all(header.flags, mem)?;
+            bump.free_all();
+            revoke::by_bounds(mem, bump.inner.start(), bump.inner.endb())?;
+            if header.flags.contains(InitFlags::INIT_ON_FREE) {
+                mem.memset(bump.inner, bump.inner.capability().len(), UNINIT_BYTE)?;
+            }
             mem.write(ator, bump)?;
         }
     }

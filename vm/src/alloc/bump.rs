@@ -11,7 +11,7 @@ pub(super) struct BumpAlloc {
     // start: region start
     // addr: first free address (grows upward) (yes ik bump allocs grow downward) or endb
     // endb: region endb
-    inner: TaggedCapability,
+    pub(super) inner: TaggedCapability,
 }
 
 impl BumpAlloc {
@@ -59,13 +59,8 @@ impl BumpAlloc {
         }
     }
 
-    pub fn free_all(&mut self, flags: InitFlags, mem: &mut Memory) -> Result<(), Exception> {
-        revoke::by_bounds(mem, self.inner.start(), self.inner.endb())?;
+    pub fn free_all(&mut self) {
         self.inner = self.inner.set_addr(self.inner.start());
-        if flags.contains(InitFlags::INIT_ON_FREE) {
-            mem.memset(self.inner, self.inner.capability().len(), UNINIT_BYTE)?;
-        }
-        Ok(())
     }
 }
 
