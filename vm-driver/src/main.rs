@@ -79,7 +79,7 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
             ops
         };
 
-        Memory::new(args.granules, &init).context("failed to instantiate memory")?
+        Memory::new(args.granules, init.iter()).context("failed to instantiate memory")?
     };
 
     tracing::info!("execution start");

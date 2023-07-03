@@ -22,7 +22,10 @@ pub struct Memory {
 }
 
 impl Memory {
-    pub fn new(granules: UAddr, init: &[Op]) -> anyhow::Result<Self> {
+    pub fn new<'op, I: Iterator<Item = &'op Op> + ExactSizeIterator>(
+        granules: UAddr,
+        init: I,
+    ) -> anyhow::Result<Self> {
         fn log_stats(ator: TaggedCapability, mem: &Memory) -> anyhow::Result<()> {
             let stats = alloc::stat(ator, mem)?;
             tracing::trace!(
@@ -107,7 +110,7 @@ impl Memory {
         });
         log_stats(root_alloc, &mem)?;
         tracing::debug!(pc = pc.addr().get(), "writing init program to memory");
-        mem.write_slice(pc, init)
+        mem.write_iter(pc, init)
             .context("failed to write init program to root address")?;
 
         // remove write access
@@ -140,10 +143,10 @@ impl Memory {
         val.write_to_mem(dst, self)
     }
 
-    pub fn write_slice<T: Ty>(
+    pub fn write_iter<'elem, T: Ty + 'elem, I: Iterator<Item = &'elem T> + ExactSizeIterator>(
         &mut self,
         mut dst: TaggedCapability,
-        vals: &[T],
+        vals: I,
     ) -> Result<(), Exception> {
         let layout = T::LAYOUT;
 
@@ -155,7 +158,7 @@ impl Memory {
         access.len = Some(len);
         dst.check_given_access(access)?;
 
-        for val in vals.iter().copied() {
+        for val in vals.copied() {
             self.write(dst, val)?;
             dst = dst.set_addr(dst.addr().add(layout.size));
         }
