@@ -1,5 +1,3 @@
-mod exception;
-
 use anyhow::Context;
 use argh::FromArgs;
 use nu_ansi_term::{Color, Style};
@@ -18,8 +16,6 @@ use fruticose_vm::exception::Exception;
 use fruticose_vm::int::UAddr;
 use fruticose_vm::mem::Memory;
 use fruticose_vm::op::Op;
-
-use crate::exception::VmException;
 
 /// Fruticose virtual machine
 #[derive(FromArgs)]
@@ -96,7 +92,7 @@ fn assemble_init(init: &Path) -> anyhow::Result<Vec<Op>> {
                 let mut err_out = BufWriter::new(stderr());
                 pretty_print_parse_err(&mut err_out, init, err)?;
                 writeln!(err_out)?;
-                anyhow::bail!(VmException::AssembleInit);
+                anyhow::bail!("failed to assemble init program");
             }
         }
     }
