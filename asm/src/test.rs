@@ -7,7 +7,7 @@ use crate::lex::{Lexer, Token, TokenTyp};
 use crate::parse::Parser;
 use crate::Span;
 
-const EXIT: &str = include_str!("../test/exit.asm");
+const EXIT: &str = include_str!("../examples/exit.asm");
 
 #[test]
 fn exit_lex() {
