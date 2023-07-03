@@ -98,7 +98,7 @@ impl Granule {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Capability {
-    pub(crate) addr: Address,
+    addr: Address,
     start: Address,
     endb: Address,
     perms: Permissions,
