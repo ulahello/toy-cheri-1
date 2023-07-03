@@ -141,7 +141,7 @@ fn pretty_print_parse_err<W: Write>(
     let err_underline = err_title;
     let err_body = Style::new().bold();
     let text = Style::new();
-    let symbols = Color::Magenta.bold();
+    let symbols = Color::Blue.bold();
 
     let span = err.span;
 
