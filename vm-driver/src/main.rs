@@ -142,6 +142,7 @@ fn pretty_print_parse_err<W: Write>(
     let err_body = Style::new().bold();
     let text = Style::new();
     let symbols = Color::Blue.bold();
+    let err_span = text;
 
     let span = err.span;
 
@@ -204,11 +205,13 @@ fn pretty_print_parse_err<W: Write>(
     )?;
     writeln!(
         f,
-        "{side_padding}{}{line}{}{side_padding}{}|{}{side_padding}{pre_span}{in_span}{post_span}",
+        "{side_padding}{}{line}{}{side_padding}{}|{}{side_padding}{pre_span}{}{in_span}{}{post_span}",
         text.infix(symbols),
         symbols.infix(text),
         text.infix(symbols),
         symbols.infix(text),
+        text.infix(err_span),
+        err_span.infix(text),
     )?;
     writeln!(
         f,
