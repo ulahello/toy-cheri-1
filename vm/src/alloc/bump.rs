@@ -59,11 +59,9 @@ impl BumpAlloc {
     }
 
     pub fn free_all(&mut self, mem: &mut Memory) -> Result<(), Exception> {
+        revoke::by_bounds(mem, self.inner.start(), self.inner.endb())?;
         self.inner = self.inner.set_addr(self.inner.start());
-        /* TODOO: be careful about if revocation fails, since it could leave
-         * invalid pointers lying around failure. failure here should be
-         * fatal */
-        revoke::by_bounds(mem, self.inner.start(), self.inner.endb())
+        Ok(())
     }
 }
 
