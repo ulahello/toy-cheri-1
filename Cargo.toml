@@ -1,0 +1,6 @@
+[workspace]
+members = [
+	"vm",
+	"vm-driver",
+	"asm",
+]

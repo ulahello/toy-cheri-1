@@ -1,17 +1,17 @@
 use anyhow::Context;
 use argh::FromArgs;
+use fruticose_asm::parse::Parser;
 use tracing::{span, Level};
 
+use std::fs;
 use std::io::stderr;
+use std::path::PathBuf;
 use std::process::ExitCode;
 
-use fruticose_vm::capability::{Capability, TaggedCapability};
 use fruticose_vm::exception::Exception;
 use fruticose_vm::int::UAddr;
 use fruticose_vm::mem::Memory;
 use fruticose_vm::op::Op;
-use fruticose_vm::registers::Register;
-use fruticose_vm::syscall::SyscallKind;
 
 /// Fruticose virtual machine
 #[derive(FromArgs)]
@@ -19,6 +19,10 @@ struct Args {
     /// granules of physical memory to use
     #[argh(option, short = 'g')]
     granules: UAddr,
+
+    /// path to init program assembly
+    #[argh(option, short = 'i')]
+    init: PathBuf,
 }
 
 fn main() -> ExitCode {
@@ -47,18 +51,37 @@ fn main() -> ExitCode {
 }
 
 fn try_main(args: &Args) -> anyhow::Result<()> {
-    let span = span!(Level::TRACE, "main", granules = args.granules);
-    let _guard = span.enter();
+    let span1 = span!(Level::TRACE, "main", granules = args.granules);
+    let _guard1 = span1.enter();
 
-    let init: &[Op] = &[
-        Op::nop(),
-        Op::loadi(
-            Register::A0 as _,
-            TaggedCapability::from_ugran(SyscallKind::Exit as _),
-        ),
-        Op::syscall(),
-    ];
-    let mut mem = Memory::new(args.granules, init).context("failed to instantiate memory")?;
+    let mut mem = {
+        let init: Vec<Op> = {
+            let span2 = span!(
+                Level::TRACE,
+                "load_init",
+                path = format_args!("{}", args.init.display())
+            );
+            let _guard2 = span2.enter();
+
+            tracing::debug!("loading init program");
+
+            tracing::trace!("reading init program");
+            let init_src =
+                fs::read_to_string(&args.init).context("failed to read init program source")?;
+
+            tracing::trace!("assembling init program");
+            let parser = Parser::new(&init_src);
+            let mut ops = Vec::new();
+            for try_op in parser {
+                let op = try_op.expect("TODOO: handle asm parse error");
+                ops.push(op);
+            }
+            ops
+        };
+
+        Memory::new(args.granules, &init).context("failed to instantiate memory")?
+    };
+
     tracing::info!("execution start");
     loop {
         match mem.execute_op() {
