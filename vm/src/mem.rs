@@ -177,10 +177,9 @@ impl Memory {
         dst.check_given_access(access)?;
 
         // casts assume that bounds of capability lie within bounds of self.mem
-        let start_idx = usize::try_from(dst.addr().get()).unwrap();
+        let start_idx = dst.addr().get() as usize;
         let dst_slice = &mut self.mem[start_idx..][..count as usize];
         dst_slice.fill(byte);
-
         Ok(())
     }
 }
@@ -192,10 +191,10 @@ impl Memory {
         layout: Layout,
     ) -> Result<&[u8], Exception> {
         src.check_access(MemAccessKind::Read, layout.align, Some(layout.size))?;
+
         // casts assume that bounds of capability lie within bounds of self.mem
-        let start_idx = usize::try_from(src.addr().get()).unwrap();
-        let endb_idx = start_idx + layout.size as usize;
-        Ok(&self.mem[start_idx..endb_idx])
+        let start_idx = src.addr().get() as usize;
+        Ok(&self.mem[start_idx..][..layout.size as usize])
     }
 
     pub(crate) fn write_raw(
@@ -209,10 +208,10 @@ impl Memory {
             UAddr::try_from(buf.len()).map_err(|_| Exception::InvalidMemAccess { access })?;
         access.len = Some(buf_len);
         dst.check_given_access(access)?;
+
         // casts assume that bounds of capability lie within bounds of self.mem
-        let start_idx = usize::try_from(dst.addr().get()).unwrap();
-        let endb_idx: usize = start_idx + buf_len as usize;
-        self.mem[start_idx..endb_idx].copy_from_slice(buf);
+        let start_idx = dst.addr().get() as usize;
+        self.mem[start_idx..][..buf_len as usize].copy_from_slice(buf);
         Ok(())
     }
 }
