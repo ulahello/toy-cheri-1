@@ -10,9 +10,9 @@ pub fn by_bounds(mem: &mut Memory, start: Address, endb: Address) -> Result<(), 
         if mem.tags.mem[idx] {
             let cap: Capability = {
                 let mut cap = None;
-                if let Ok(reg_idx) = u8::try_from(idx) {
-                    if let Ok(reg) = mem.regs.read_untagged(reg_idx) {
-                        cap = Some(reg);
+                if let Ok(reg) = u8::try_from(idx) {
+                    if let Ok(gran) = mem.regs.read_untagged(reg) {
+                        cap = Some(Capability::from_ugran(gran));
                     }
                 }
                 if let Some(cap) = cap {

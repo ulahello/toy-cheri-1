@@ -3,6 +3,7 @@ use core::fmt;
 use crate::access::RegAccess;
 use crate::capability::{Capability, TaggedCapability};
 use crate::exception::Exception;
+use crate::int::UGran;
 use crate::mem::TagController;
 
 #[derive(Debug)]
@@ -20,23 +21,23 @@ impl Registers {
     }
 
     pub fn read(&self, tags: &TagController, reg: u8) -> Result<TaggedCapability, Exception> {
-        let capa = self.read_untagged(reg)?;
+        let gran = self.read_untagged(reg)?;
         let valid = if reg == Register::Zero as _ {
             // TODO: if true false?
             false
         } else {
             tags.read_reg(reg).unwrap()
         };
-        Ok(TaggedCapability::new(capa, valid))
+        Ok(TaggedCapability::new(Capability::from_ugran(gran), valid))
     }
 
-    pub fn read_untagged(&self, reg: u8) -> Result<Capability, Exception> {
+    pub(crate) fn read_untagged(&self, reg: u8) -> Result<UGran, Exception> {
         if Self::is_reg_valid(reg) {
             if reg == Register::Zero as _ {
-                return Ok(Capability::from_ugran(0));
+                return Ok(0);
             }
             let idx = Self::reg_to_idx(reg);
-            Ok(self.regs[idx])
+            Ok(self.regs[idx].to_ugran())
         } else {
             Err(Exception::InvalidRegAccess {
                 access: RegAccess { reg },
