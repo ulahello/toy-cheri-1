@@ -136,7 +136,7 @@ pub fn init(
     Ok(ret)
 }
 
-pub fn deinit(ator: TaggedCapability, mem: &mut Memory) -> Result<TaggedCapability, Exception> {
+pub fn deinit(_ator: TaggedCapability, _mem: &mut Memory) -> Result<TaggedCapability, Exception> {
     todo!()
 }
 
@@ -164,9 +164,9 @@ pub fn alloc(
 }
 
 pub fn free(
-    ator: TaggedCapability,
-    ation: TaggedCapability,
-    mem: &mut Memory,
+    _ator: TaggedCapability,
+    _ation: TaggedCapability,
+    _mem: &mut Memory,
 ) -> Result<(), Exception> {
     todo!()
 }
