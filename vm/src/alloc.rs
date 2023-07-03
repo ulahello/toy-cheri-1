@@ -11,12 +11,6 @@ use crate::revoke;
 
 use bump::BumpAlloc;
 
-/* TODOO: temporal safety (this will do that allegedly)
-explore the following:
-- CHERIvoke
-- ViK: practical mitigation of temporal memory safety violations through object ID inspection
- */
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Strategy {
