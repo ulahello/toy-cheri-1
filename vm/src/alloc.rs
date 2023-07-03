@@ -213,10 +213,10 @@ pub fn alloc(
     layout: Layout,
     mem: &mut Memory,
 ) -> Result<TaggedCapability, Exception> {
-    /* TODOO: very bad things can happen if ator has been mutated since being
-     * returned by super::new. until capabilities can be sealed (and the
-     * immutability of ator is guaranteed), this function is optimistic and
-     * undermines everything :) */
+    /* TODOO: very bad things can happen if ator has been mutated (or even used)
+     * since being returned by super::init. until capabilities can be sealed
+     * (and the immutability of ator is guaranteed), this function is optimistic
+     * and undermines everything :) */
     let header: Header = mem.read(ator)?;
     ator = ator.set_addr(ator.addr().add(Header::LAYOUT.size));
     let ation = match header.strat {
