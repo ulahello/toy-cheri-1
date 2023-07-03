@@ -1,12 +1,13 @@
 use fruticose_vm::capability::TaggedCapability;
 use fruticose_vm::op::{Op, OpKind};
 
-use crate::lex::{ByteSpan, LexErrTyp, Lexer, Token, TokenTyp};
+use crate::lex::{LexErrTyp, Lexer, Token, TokenTyp};
+use crate::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ParseErr<'s> {
-    typ: ParseErrTyp,
-    span: ByteSpan<'s>,
+    pub typ: ParseErrTyp,
+    pub span: Span<'s>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,7 +29,9 @@ impl<'s> Parser<'s> {
             lexer: Lexer::new(src),
         }
     }
+}
 
+impl<'s> Parser<'s> {
     fn expect_token(&mut self) -> Result<Token<'s>, ParseErr<'s>> {
         match self.lexer.next() {
             Some(Ok(tok)) => Ok(tok),
@@ -86,9 +89,6 @@ impl<'s> Parser<'s> {
                 // syscall kind as operand is inlined to its byte representation
                 TaggedCapability::from_ugran(syscall as _)
             }
-            TokenTyp::Ident => {
-                todo!("make sense of identifiers")
-            }
             _ => {
                 return Err(ParseErr {
                     typ: ParseErrTyp::InvalidOperand,
@@ -99,19 +99,9 @@ impl<'s> Parser<'s> {
         Ok(tcap)
     }
 
-    fn next_inner(&mut self) -> Result<Option<Op>, ParseErr<'s>> {
-        // skip newlines and handle eof
-        let try_op_kind = loop {
-            let tok = self.expect_token()?;
-            match tok.typ {
-                TokenTyp::Newline => continue,
-                TokenTyp::Eof => return Ok(None),
-                _ => break tok,
-            }
-        };
-
+    fn expect_operation(&mut self, start: Token<'s>) -> Result<Op, ParseErr<'s>> {
         // verify that operation starts with OpKind
-        let op_kind = Self::expect_op_kind(try_op_kind)?;
+        let op_kind = Self::expect_op_kind(start)?;
 
         /* now we expect a variable number of operands to the operation
          * (determined by OpKind::arg_count) */
@@ -147,6 +137,23 @@ impl<'s> Parser<'s> {
 
         // verify that operation ends with newline
         Self::expect_newline(self.expect_token()?)?;
+
+        Ok(op)
+    }
+
+    fn next_inner(&mut self) -> Result<Option<Op>, ParseErr<'s>> {
+        // skip newlines and handle eof
+        let try_op_start = loop {
+            let tok = self.expect_token()?;
+            match tok.typ {
+                TokenTyp::Newline => continue,
+                TokenTyp::Eof => return Ok(None),
+                _ => break tok,
+            }
+        };
+
+        // assembly currently only supports lines of operations
+        let op = self.expect_operation(try_op_start)?;
 
         Ok(Some(op))
     }

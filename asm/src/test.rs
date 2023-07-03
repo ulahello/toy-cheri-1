@@ -3,81 +3,144 @@ use fruticose_vm::op::{Op, OpKind};
 use fruticose_vm::registers::Register;
 use fruticose_vm::syscall::SyscallKind;
 
-use crate::lex::{ByteSpan, Lexer, Token, TokenTyp};
+use crate::lex::{Lexer, Token, TokenTyp};
 use crate::parse::Parser;
+use crate::Span;
+
+const EXIT: &str = include_str!("../test/exit.asm");
 
 #[test]
 fn exit_lex() {
-    let src = include_str!("../examples/exit.asm");
+    let src = EXIT;
     let mut lexer = Lexer::new(src);
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::Op(OpKind::Nop),
-            span: ByteSpan::new(0, 3, src)
+            span: Span {
+                line: 0,
+                col_idx: 0,
+                len: 3,
+                line_start: 0,
+                src
+            }
         }))
     );
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::Newline,
-            span: ByteSpan::new(22, 1, src)
+            span: Span {
+                line: 0,
+                col_idx: 22,
+                len: 1,
+                line_start: 0,
+                src,
+            }
         }))
     );
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::Op(OpKind::LoadI),
-            span: ByteSpan::new(23, 5, src)
+            span: Span {
+                line: 1,
+                col_idx: 0,
+                len: 5,
+                line_start: 23,
+                src
+            }
         }))
     );
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::Register(Register::A0),
-            span: ByteSpan::new(29, 2, src)
+            span: Span {
+                line: 1,
+                col_idx: 6,
+                len: 2,
+                line_start: 23,
+                src,
+            }
         }))
     );
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::Comma,
-            span: ByteSpan::new(31, 1, src)
+            span: Span {
+                line: 1,
+                col_idx: 8,
+                len: 1,
+                line_start: 23,
+                src
+            }
         }))
     );
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::Syscall(SyscallKind::Exit),
-            span: ByteSpan::new(33, 8, src)
+            span: Span {
+                line: 1,
+                col_idx: 10,
+                len: 8,
+                line_start: 23,
+                src
+            }
         }))
     );
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::Newline,
-            span: ByteSpan::new(41, 1, src)
+            span: Span {
+                line: 1,
+                col_idx: 18,
+                len: 1,
+                line_start: 23,
+                src
+            }
         }))
     );
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::Op(OpKind::Syscall),
-            span: ByteSpan::new(42, 7, src)
+            span: Span {
+                line: 2,
+                col_idx: 0,
+                len: 7,
+                line_start: 42,
+                src
+            }
         }))
     );
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::Newline,
-            span: ByteSpan::new(49, 1, src)
+            span: Span {
+                line: 2,
+                col_idx: 7,
+                len: 1,
+                line_start: 42,
+                src
+            }
         }))
     );
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::Eof,
-            span: ByteSpan::new(50, 0, src)
+            span: Span {
+                line: 3,
+                col_idx: 0,
+                len: 0,
+                line_start: 50,
+                src,
+            },
         }))
     );
     assert_eq!(lexer.next(), None);
@@ -85,7 +148,7 @@ fn exit_lex() {
 
 #[test]
 fn exit_parse() {
-    let src = include_str!("../examples/exit.asm");
+    let src = EXIT;
     let mut parser = Parser::new(src);
     assert_eq!(parser.next(), Some(Ok(Op::nop())));
     assert_eq!(
