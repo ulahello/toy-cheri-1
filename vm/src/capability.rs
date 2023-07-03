@@ -193,6 +193,10 @@ impl Capability {
     pub const fn perms(self) -> Permissions {
         self.perms
     }
+
+    pub const fn len(&self) -> UAddr {
+        self.endb().get().saturating_sub(self.start().get())
+    }
 }
 
 impl Ty for Capability {

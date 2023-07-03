@@ -2,7 +2,7 @@ use super::{AllocErr, AllocErrKind, Stats, Strategy};
 use crate::abi::{Fields, Layout, Ty};
 use crate::capability::TaggedCapability;
 use crate::exception::Exception;
-use crate::int::UAddr;
+use crate::int::{UAddr, UNINIT_BYTE};
 use crate::mem::Memory;
 use crate::revoke;
 
@@ -61,6 +61,9 @@ impl BumpAlloc {
     pub fn free_all(&mut self, mem: &mut Memory) -> Result<(), Exception> {
         revoke::by_bounds(mem, self.inner.start(), self.inner.endb())?;
         self.inner = self.inner.set_addr(self.inner.start());
+        if super::INIT_ON_FREE {
+            mem.memset(self.inner, self.inner.capability().len(), UNINIT_BYTE)?;
+        }
         Ok(())
     }
 }

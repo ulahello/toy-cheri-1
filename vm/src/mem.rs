@@ -165,6 +165,24 @@ impl Memory {
 
         Ok(())
     }
+
+    pub fn memset(
+        &mut self,
+        dst: TaggedCapability,
+        count: UAddr,
+        byte: u8,
+    ) -> Result<(), Exception> {
+        let mut access = dst.access(MemAccessKind::Write, u8::LAYOUT.align, None);
+        access.len = Some(count);
+        dst.check_given_access(access)?;
+
+        // casts assume that bounds of capability lie within bounds of self.mem
+        let start_idx = usize::try_from(dst.addr().get()).unwrap();
+        let dst_slice = &mut self.mem[start_idx..][..count as usize];
+        dst_slice.fill(byte);
+
+        Ok(())
+    }
 }
 
 impl Memory {

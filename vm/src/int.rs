@@ -11,7 +11,8 @@ pub type UAddr = u64;
 pub const UADDR_SIZE: u8 = mem::size_of::<UAddr>() as _;
 pub const UGRAN_SIZE: u8 = mem::size_of::<UGran>() as _;
 
-pub const UNINIT: UAddr = UAddr::from_le_bytes([0x55; UADDR_SIZE as _]);
+pub const UNINIT: UAddr = UAddr::from_le_bytes([UNINIT_BYTE; UADDR_SIZE as _]);
+pub const UNINIT_BYTE: u8 = 0x55;
 
 // TODO: Ty impls for ints are duplicated
 

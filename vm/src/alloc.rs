@@ -5,16 +5,17 @@ use bump::BumpAlloc;
 use crate::abi::{Align, Fields, Layout, Ty};
 use crate::capability::TaggedCapability;
 use crate::exception::Exception;
-use crate::int::UAddr;
+use crate::int::{UAddr, UNINIT_BYTE};
 use crate::mem::Memory;
-
-/* TODOO: init on free, init on alloc */
 
 /* TODOO: temporal safety (this will do that allegedly)
 explore the following:
 - CHERIvoke
 - ViK: practical mitigation of temporal memory safety violations through object ID inspection
  */
+
+const INIT_ON_ALLOC: bool = true;
+const INIT_ON_FREE: bool = true;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -160,6 +161,9 @@ pub fn alloc(
             ation
         }
     };
+    if INIT_ON_ALLOC {
+        mem.memset(ation, ation.capability().len(), UNINIT_BYTE)?;
+    }
     Ok(ation)
 }
 
