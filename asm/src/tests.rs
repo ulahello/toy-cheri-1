@@ -8,6 +8,7 @@ use crate::parse::Parser;
 use crate::Span;
 
 const EXIT: &str = include_str!("../examples/exit.asm");
+const CRASH_1: &str = include_str!("../examples/crash-1.asm");
 
 #[test]
 fn exit_lex() {
@@ -160,4 +161,36 @@ fn exit_parse() {
     );
     assert_eq!(parser.next(), Some(Ok(Op::syscall())));
     assert_eq!(parser.next(), None);
+}
+
+#[test]
+fn crash_1_lex() {
+    let src = CRASH_1;
+    let mut lexer = Lexer::new(src);
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Newline,
+            span: Span {
+                line: 0,
+                col_idx: 95,
+                len: 1,
+                line_start: 0,
+                src,
+            }
+        }))
+    );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Op(OpKind::LoadI),
+            span: Span {
+                line: 1,
+                col_idx: 0,
+                len: 5,
+                line_start: 96,
+                src,
+            }
+        }))
+    );
 }
