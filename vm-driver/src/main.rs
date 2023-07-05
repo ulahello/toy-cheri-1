@@ -193,13 +193,20 @@ fn pretty_print_parse_err<W: Write>(
     let pre_span = &span.get_line()[..span.col_idx];
     let in_span = span.get();
     let post_span = &span.get_line()[span.col_idx..][span.len..];
+    let pre_span_len = UnicodeWidthStr::width(pre_span);
+    let in_span_len = UnicodeWidthStr::width(in_span).max(1);
 
     let line = span.line + 1;
     // TODO: unwrap on None possible
-    let col = UnicodeSegmentation::grapheme_indices(span.get_line(), true)
-        .position(|(idx, _)| idx == span.col_idx)
-        .unwrap()
-        + 1;
+    let col = {
+        let graphs = || UnicodeSegmentation::grapheme_indices(span.get_line(), true);
+        if let Some(col) = graphs().position(|(idx, _)| idx == span.col_idx) {
+            col + 1
+        } else {
+            // eof isnt a real character! but its still loved
+            graphs().map(|(idx, _)| idx).last().unwrap_or(0)
+        }
+    };
 
     let line_fmt_width = line.ilog10() as usize + 1;
     let side_pad = 1;
@@ -239,8 +246,8 @@ fn pretty_print_parse_err<W: Write>(
         symbols.infix(text),
         text.infix(err_underline),
         err_underline.suffix(),
-        skip_pre = " ".repeat(UnicodeWidthStr::width(pre_span)),
-        fake_underline = "^".repeat(UnicodeWidthStr::width(in_span)),
+        skip_pre = " ".repeat(pre_span_len),
+        fake_underline = "^".repeat(in_span_len),
     )?;
 
     f.flush()?;
