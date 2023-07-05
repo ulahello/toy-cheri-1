@@ -4,3 +4,6 @@ members = [
 	"vm-driver",
 	"asm",
 ]
+
+[profile.release]
+lto = true
