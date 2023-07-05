@@ -70,7 +70,7 @@ impl Memory {
                 self.regs.write_data(&mut self.tags, dst, val.into())?;
             }
 
-            OpKind::Load128 => {
+            OpKind::LoadU128 => {
                 let dst = reg(op.op1);
                 let src = op.op2;
                 let val: u128 = self.read(src)?;

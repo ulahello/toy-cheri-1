@@ -96,7 +96,7 @@ impl<'s> Lexer<'s> {
             "loadu16" => TokenTyp::Op(OpKind::LoadU16),
             "loadu32" => TokenTyp::Op(OpKind::LoadU32),
             "loadu64" => TokenTyp::Op(OpKind::LoadU64),
-            "load128" => TokenTyp::Op(OpKind::Load128),
+            "loadu128" => TokenTyp::Op(OpKind::LoadU128),
             "loadc" => TokenTyp::Op(OpKind::LoadC),
             "store8" => TokenTyp::Op(OpKind::Store8),
             "store16" => TokenTyp::Op(OpKind::Store16),

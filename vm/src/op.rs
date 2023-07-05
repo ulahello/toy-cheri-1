@@ -37,8 +37,7 @@ pub enum OpKind {
 
     /// Load 128-bit value from capability at register `op2` into register
     /// `op1`.
-    // TODO: rename to LoadU128
-    Load128,
+    LoadU128,
 
     /// Load capability from capability at register `op2` into register `op1`.
     LoadC,
@@ -168,7 +167,7 @@ impl OpKind {
             3 => Ok(Self::LoadU16),
             4 => Ok(Self::LoadU32),
             5 => Ok(Self::LoadU64),
-            6 => Ok(Self::Load128),
+            6 => Ok(Self::LoadU128),
             7 => Ok(Self::LoadC),
             8 => Ok(Self::Store8),
             9 => Ok(Self::Store16),
@@ -208,7 +207,7 @@ impl OpKind {
             Self::LoadU16 => 2,
             Self::LoadU32 => 2,
             Self::LoadU64 => 2,
-            Self::Load128 => 2,
+            Self::LoadU128 => 2,
             Self::LoadC => 2,
             Self::Store8 => 2,
             Self::Store16 => 2,
@@ -267,7 +266,7 @@ impl OpKind {
             Self::LoadU16 => sig(self, [Register, Register]),
             Self::LoadU32 => sig(self, [Register, Register]),
             Self::LoadU64 => sig(self, [Register, Register]),
-            Self::Load128 => sig(self, [Register, Register]),
+            Self::LoadU128 => sig(self, [Register, Register]),
             Self::LoadC => sig(self, [Register, Register]),
             Self::Store8 => sig(self, [Register, Register]),
             Self::Store16 => sig(self, [Register, Register]),
@@ -323,7 +322,7 @@ impl fmt::Display for OpKind {
             Self::LoadU16 => "loadu16",
             Self::LoadU32 => "loadu32",
             Self::LoadU64 => "loadu64",
-            Self::Load128 => "load128",
+            Self::LoadU128 => "loadu128",
             Self::LoadC => "loadc",
             Self::Store8 => "store8",
             Self::Store16 => "store16",
