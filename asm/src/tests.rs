@@ -9,7 +9,7 @@ use crate::Span;
 
 const EXIT: &str = include_str!("../examples/exit.asm");
 const CRASH_1: &str = include_str!("../examples/crash-1.asm");
-const INT_LITERAL: &str = include_str!("../examples/int-literal.asm");
+const ADD: &str = include_str!("../examples/add.asm");
 
 #[test]
 fn exit_lex() {
@@ -197,8 +197,8 @@ fn crash_1_lex() {
 }
 
 #[test]
-fn int_literal_lex() {
-    let src = INT_LITERAL;
+fn add() {
+    let src = ADD;
     let mut lexer = Lexer::new(src);
     assert_eq!(
         lexer.next(),
@@ -427,9 +427,87 @@ fn int_literal_lex() {
             typ: TokenTyp::Newline,
             span: Span {
                 line: 3,
-                col_idx: 23,
+                col_idx: 16,
                 len: 1,
                 line_start: 41,
+                src
+            }
+        }))
+    );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Op(OpKind::Add),
+            span: Span {
+                line: 4,
+                col_idx: 0,
+                len: 3,
+                line_start: 58,
+                src
+            }
+        }))
+    );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Register(Register::T0),
+            span: Span {
+                line: 4,
+                col_idx: 4,
+                len: 2,
+                line_start: 58,
+                src
+            }
+        }))
+    );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Comma,
+            span: Span {
+                line: 4,
+                col_idx: 6,
+                len: 1,
+                line_start: 58,
+                src
+            }
+        }))
+    );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Register(Register::Zero),
+            span: Span {
+                line: 4,
+                col_idx: 8,
+                len: 4,
+                line_start: 58,
+                src
+            }
+        }))
+    );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Comma,
+            span: Span {
+                line: 4,
+                col_idx: 12,
+                len: 1,
+                line_start: 58,
+                src
+            }
+        }))
+    );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::UnsignedInt(1),
+            span: Span {
+                line: 4,
+                col_idx: 14,
+                len: 1,
+                line_start: 58,
                 src
             }
         }))
@@ -440,9 +518,35 @@ fn int_literal_lex() {
             typ: TokenTyp::Newline,
             span: Span {
                 line: 4,
+                col_idx: 15,
+                len: 1,
+                line_start: 58,
+                src
+            }
+        }))
+    );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Newline,
+            span: Span {
+                line: 5,
+                col_idx: 16,
+                len: 1,
+                line_start: 74,
+                src
+            }
+        }))
+    );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Newline,
+            span: Span {
+                line: 6,
                 col_idx: 0,
                 len: 1,
-                line_start: 65,
+                line_start: 91,
                 src
             }
         }))
@@ -452,10 +556,10 @@ fn int_literal_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Op(OpKind::LoadI),
             span: Span {
-                line: 5,
+                line: 7,
                 col_idx: 0,
                 len: 5,
-                line_start: 66,
+                line_start: 92,
                 src
             }
         }))
@@ -465,10 +569,10 @@ fn int_literal_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Register(Register::A0),
             span: Span {
-                line: 5,
+                line: 7,
                 col_idx: 6,
                 len: 2,
-                line_start: 66,
+                line_start: 92,
                 src
             }
         }))
@@ -478,10 +582,10 @@ fn int_literal_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Comma,
             span: Span {
-                line: 5,
+                line: 7,
                 col_idx: 8,
                 len: 1,
-                line_start: 66,
+                line_start: 92,
                 src
             }
         }))
@@ -491,10 +595,10 @@ fn int_literal_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Syscall(SyscallKind::Exit),
             span: Span {
-                line: 5,
+                line: 7,
                 col_idx: 10,
                 len: 8,
-                line_start: 66,
+                line_start: 92,
                 src
             }
         }))
@@ -504,10 +608,10 @@ fn int_literal_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Newline,
             span: Span {
-                line: 5,
+                line: 7,
                 col_idx: 18,
                 len: 1,
-                line_start: 66,
+                line_start: 92,
                 src
             }
         }))
@@ -517,10 +621,10 @@ fn int_literal_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Op(OpKind::Syscall),
             span: Span {
-                line: 6,
+                line: 8,
                 col_idx: 0,
                 len: 7,
-                line_start: 85,
+                line_start: 111,
                 src
             }
         }))
@@ -530,10 +634,10 @@ fn int_literal_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Newline,
             span: Span {
-                line: 6,
+                line: 8,
                 col_idx: 7,
                 len: 1,
-                line_start: 85,
+                line_start: 111,
                 src
             }
         }))
@@ -543,10 +647,10 @@ fn int_literal_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Eof,
             span: Span {
-                line: 7,
+                line: 9,
                 col_idx: 0,
                 len: 0,
-                line_start: 93,
+                line_start: 119,
                 src
             }
         }))

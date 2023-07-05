@@ -15,10 +15,10 @@ use crate::registers::{Register, Registers};
 
 #[derive(Debug)]
 pub struct Memory {
-    pub(crate) mem: Box<[u8]>,
-    pub(crate) regs: Registers,
-    pub(crate) tags: TagController,
-    pub(crate) root: TaggedCapability,
+    pub mem: Box<[u8]>,
+    pub regs: Registers,
+    pub tags: TagController,
+    pub root: TaggedCapability,
 }
 
 impl Memory {

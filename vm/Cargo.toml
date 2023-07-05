@@ -12,3 +12,4 @@ tracing = "0.1.37"
 
 [dev-dependencies]
 nanorand = { version = "0.7.0", default-features = false, features = ["pcg64"] }
+fruticose-asm = { path = "../asm" }

@@ -75,6 +75,7 @@ dependencies = [
  "anyhow",
  "bitflags",
  "bitvec",
+ "fruticose-asm",
  "nanorand",
  "tracing",
 ]

@@ -1,7 +1,9 @@
 loadi t1, 23
 loadi t2, 47
 add t0, t1, t2
-; 23+47 should be in t0
+; t0 contains 70
+addi t0, t0, 1
+; t0 contains 71
 
 loadi a0, SYS_EXIT
 syscall

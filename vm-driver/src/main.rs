@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use anyhow::Context;
 use argh::FromArgs;
 use nu_ansi_term::{Color, Style};
