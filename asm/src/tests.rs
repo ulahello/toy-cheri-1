@@ -8,7 +8,6 @@ use crate::parse::Parser;
 use crate::Span;
 
 const EXIT: &str = include_str!("../examples/exit.asm");
-const CRASH_1: &str = include_str!("../examples/crash-1.asm");
 const ADD: &str = include_str!("../examples/add.asm");
 
 #[test]
@@ -162,38 +161,6 @@ fn exit_parse() {
     );
     assert_eq!(parser.next(), Some(Ok(Op::syscall())));
     assert_eq!(parser.next(), None);
-}
-
-#[test]
-fn crash_1_lex() {
-    let src = CRASH_1;
-    let mut lexer = Lexer::new(src);
-    assert_eq!(
-        lexer.next(),
-        Some(Ok(Token {
-            typ: TokenTyp::Newline,
-            span: Span {
-                line: 0,
-                col_idx: 95,
-                len: 1,
-                line_start: 0,
-                src,
-            }
-        }))
-    );
-    assert_eq!(
-        lexer.next(),
-        Some(Ok(Token {
-            typ: TokenTyp::Op(OpKind::LoadI),
-            span: Span {
-                line: 1,
-                col_idx: 0,
-                len: 5,
-                line_start: 96,
-                src,
-            }
-        }))
-    );
 }
 
 #[test]
@@ -656,4 +623,34 @@ fn add_lex() {
         }))
     );
     assert_eq!(lexer.next(), None);
+}
+
+mod crash {
+    use crate::lex::TokenTyp;
+    use crate::parse::{ParseErr, ParseErrTyp, Parser};
+    use crate::Span;
+
+    const CRASH_3: &str = include_str!("../examples/crash-3.asm");
+
+    #[test]
+    fn parser_eof_unreachable() {
+        let src = CRASH_3;
+        let mut parser = Parser::new(src);
+        assert_eq!(
+            parser.next(),
+            Some(Err(ParseErr {
+                typ: ParseErrTyp::ExpectedTyp {
+                    expected: TokenTyp::Newline,
+                    found: TokenTyp::Eof
+                },
+                span: Span {
+                    line: 0,
+                    col_idx: 0,
+                    len: 5,
+                    line_start: 0,
+                    src,
+                }
+            }))
+        );
+    }
 }

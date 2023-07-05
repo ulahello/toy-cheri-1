@@ -195,6 +195,7 @@ fn pretty_print_parse_err<W: Write>(
     let post_span = &span.get_line()[span.col_idx..][span.len..];
 
     let line = span.line + 1;
+    // TODO: unwrap on None possible
     let col = UnicodeSegmentation::grapheme_indices(span.get_line(), true)
         .position(|(idx, _)| idx == span.col_idx)
         .unwrap()
