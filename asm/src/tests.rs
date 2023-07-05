@@ -197,7 +197,7 @@ fn crash_1_lex() {
 }
 
 #[test]
-fn add() {
+fn add_lex() {
     let src = ADD;
     let mut lexer = Lexer::new(src);
     assert_eq!(
