@@ -5,6 +5,8 @@ use crate::capability::TaggedCapability;
 use crate::exception::Exception;
 use crate::mem::Memory;
 
+// TODO: document which operations operate on capabilities
+
 /* TODOOO: turing complete memory manipulation */
 /* TODOOO: manipulation of cababilities */
 // informally based on riscv but this is not by definition so could change anytime
@@ -16,6 +18,133 @@ pub enum OpKind {
 
     /// Load immediate value `op2` into register `op1`.
     LoadI,
+
+    /// Load 8-bit value from memory at `op2` and zero-extend before storing it
+    /// in register `op1`.
+    LoadU8,
+
+    /// Load 16-bit value from memory at `op2` and zero-extend before storing it
+    /// in register `op1`.
+    LoadU16,
+
+    /// Load 32-bit value from memory at `op2` and zero-extend before storing it
+    /// in register `op1`.
+    LoadU32,
+
+    /// Load 64-bit value from memory at `op2` and zero-extend before storing it
+    /// in register `op1`.
+    LoadU64,
+
+    /// Load 128-bit value from memory at `op2` into register `op1`.
+    Load128,
+
+    /// Load capability from memory at `op2` into register `op1`.
+    LoadC,
+
+    /// Store 8-bit value from the low bits of register `op2` to memory at
+    /// `op1`.
+    Store8,
+
+    /// Store 16-bit value from the low bits of register `op2` to memory at
+    /// `op1`.
+    Store16,
+
+    /// Store 32-bit value from the low bits of register `op2` to memory at
+    /// `op1`.
+    Store32,
+
+    /// Store 64-bit value from the low bits of register `op2` to memory at
+    /// `op1`.
+    Store64,
+
+    /// Store 128-bit value from the low bits of register `op2` to memory at
+    /// `op1`.
+    Store128,
+
+    /// Store capability from register `op2` into memory at `op1`.
+    StoreC,
+
+    /// Add immediate `op3` to register `op2` and store the result in register
+    /// `op1`. Arithmetic overflow is ignored.
+    AddI,
+
+    /// Add registers `op3` to `op2` and store the result in register `op1`.
+    /// Arithmetic overflow is ignored.
+    Add,
+
+    /// Subtract registers `op3` from `op2` and store the result in register
+    /// `op1`. Arithmetic overflow is ignored.
+    Sub,
+
+    /// Place the value 1 in register `op1` if register `op2` is less than
+    /// immediate `op3` when both are treated as signed numbers, else 0 is
+    /// written to `op1`.
+    SltsI,
+
+    /// Place the value 1 in register `op1` if register `op2` is less than
+    /// immediate `op3` when both are treated as unsigned numbers, else 0 is
+    /// written to `op1`.
+    SltuI,
+
+    /// Place the value 1 in register `op1` if register `op2` is less than
+    /// register `op3` when both are treated as signed numbers, else 0 is
+    /// written to `op1`.
+    Slts,
+
+    /// Place the value 1 in register `op1` if register `op2` is less than
+    /// register `op3` when both are treated as unsigned numbers, else 0 is
+    /// written to `op1`.
+    Sltu,
+
+    /// Perform bitwise XOR on register `op2` and immediate `op3` and store the
+    /// result in register `op1`.
+    XorI,
+
+    /// Perform bitwise XOR on registers `op2` and `op3` and store the result in
+    /// register `op1`.
+    Xor,
+
+    /// Perform bitwise OR on register `op2` and immediate `op3` and store the
+    /// result in register `op1`.
+    OrI,
+
+    /// Perform bitwise OR on registers `op2` and `op3` and store the result in
+    /// register `op1`.
+    Or,
+
+    /// Perform bitwise AND on register `op2` and immediate `op3` and store the
+    /// result in register `op1`.
+    AndI,
+
+    /// Perform bitwise AND on registers `op2` and `op3` and store the result in
+    /// register `op1`.
+    And,
+
+    /// Perform logical left shift on the value in register `op2` by the shift
+    /// amount held in immediate `op3` and store the result in register `op1`.
+    SllI,
+
+    /// Perform logical left shift on the value in register `op2` by the shift
+    /// amount held in register `op3` and store the result in register `op1`.
+    Sll,
+
+    /// Perform logical right shift on the value in register `op2` by the shift
+    /// amount held in immediate `op3` and store the result in register `op1`.
+    SrlI,
+
+    /// Perform logical right shift on the value in register `op2` by the shift
+    /// amount held in register `op3` and store the result in register `op1`.
+    Srl,
+
+    /// Perform arithmetic right shift on the value in register `op2` by the
+    /// shift amount held in immediate `op3` and store the result in register
+    /// `op1`.
+    SraI,
+
+    /// Perform arithmetic right shift on the value in register `op2` by the
+    /// shift amount held in register `op3` and store the result in register
+    /// `op1`.
+    Sra,
 
     /// Perform a system call. The [kind](crate::syscall::SyscallKind) is
     /// determined by the value in register `a0`.
@@ -31,7 +160,38 @@ impl OpKind {
         match byte {
             0 => Ok(Self::Nop),
             1 => Ok(Self::LoadI),
-            2 => Ok(Self::Syscall),
+            2 => Ok(Self::LoadU8),
+            3 => Ok(Self::LoadU16),
+            4 => Ok(Self::LoadU32),
+            5 => Ok(Self::LoadU64),
+            6 => Ok(Self::Load128),
+            7 => Ok(Self::LoadC),
+            8 => Ok(Self::Store8),
+            9 => Ok(Self::Store16),
+            10 => Ok(Self::Store32),
+            11 => Ok(Self::Store64),
+            12 => Ok(Self::Store128),
+            13 => Ok(Self::StoreC),
+            14 => Ok(Self::AddI),
+            15 => Ok(Self::Add),
+            16 => Ok(Self::Sub),
+            17 => Ok(Self::SltsI),
+            18 => Ok(Self::SltuI),
+            19 => Ok(Self::Slts),
+            20 => Ok(Self::Sltu),
+            21 => Ok(Self::XorI),
+            22 => Ok(Self::Xor),
+            23 => Ok(Self::OrI),
+            24 => Ok(Self::Or),
+            25 => Ok(Self::AndI),
+            26 => Ok(Self::And),
+            27 => Ok(Self::SllI),
+            28 => Ok(Self::Sll),
+            29 => Ok(Self::SrlI),
+            30 => Ok(Self::Srl),
+            31 => Ok(Self::SraI),
+            32 => Ok(Self::Sra),
+            33 => Ok(Self::Syscall),
             _ => Err(Exception::InvalidOpKind { byte }),
         }
     }
@@ -40,6 +200,37 @@ impl OpKind {
         match self {
             Self::Nop => 0,
             Self::LoadI => 2,
+            Self::LoadU8 => 2,
+            Self::LoadU16 => 2,
+            Self::LoadU32 => 2,
+            Self::LoadU64 => 2,
+            Self::Load128 => 2,
+            Self::LoadC => 2,
+            Self::Store8 => 2,
+            Self::Store16 => 2,
+            Self::Store32 => 2,
+            Self::Store64 => 2,
+            Self::Store128 => 2,
+            Self::StoreC => 2,
+            Self::AddI => 3,
+            Self::Add => 3,
+            Self::Sub => 3,
+            Self::SltsI => 3,
+            Self::SltuI => 3,
+            Self::Slts => 3,
+            Self::Sltu => 3,
+            Self::XorI => 3,
+            Self::Xor => 3,
+            Self::OrI => 3,
+            Self::Or => 3,
+            Self::AndI => 3,
+            Self::And => 3,
+            Self::SllI => 3,
+            Self::Sll => 3,
+            Self::SrlI => 3,
+            Self::Srl => 3,
+            Self::SraI => 3,
+            Self::Sra => 3,
             Self::Syscall => 0,
         }
     }
@@ -65,6 +256,37 @@ impl fmt::Display for OpKind {
         let s = match self {
             Self::Nop => "nop",
             Self::LoadI => "loadi",
+            Self::LoadU8 => "loadu8",
+            Self::LoadU16 => "loadu16",
+            Self::LoadU32 => "loadu32",
+            Self::LoadU64 => "loadu64",
+            Self::Load128 => "load128",
+            Self::LoadC => "loadc",
+            Self::Store8 => "store8",
+            Self::Store16 => "store16",
+            Self::Store32 => "store32",
+            Self::Store64 => "store64",
+            Self::Store128 => "store128",
+            Self::StoreC => "storec",
+            Self::AddI => "addi",
+            Self::Add => "add",
+            Self::Sub => "sub",
+            Self::SltsI => "sltsi",
+            Self::SltuI => "sltui",
+            Self::Slts => "slts",
+            Self::Sltu => "sltu",
+            Self::XorI => "xori",
+            Self::Xor => "xor",
+            Self::OrI => "ori",
+            Self::Or => "or",
+            Self::AndI => "andi",
+            Self::And => "and",
+            Self::SllI => "slli",
+            Self::Sll => "sll",
+            Self::SrlI => "srli",
+            Self::Srl => "srl",
+            Self::SraI => "srai",
+            Self::Sra => "sra",
             Self::Syscall => "syscall",
         };
         f.write_str(s)

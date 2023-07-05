@@ -21,7 +21,7 @@ impl Registers {
     }
 
     pub fn read(&self, tags: &TagController, reg: u8) -> Result<TaggedCapability, Exception> {
-        let gran = self.read_untagged(reg)?;
+        let gran = self.read_data(reg)?;
         let valid = if reg == Register::Zero as _ {
             // TODO: if true false?
             false
@@ -31,7 +31,7 @@ impl Registers {
         Ok(TaggedCapability::new(Capability::from_ugran(gran), valid))
     }
 
-    pub(crate) fn read_untagged(&self, reg: u8) -> Result<UGran, Exception> {
+    pub fn read_data(&self, reg: u8) -> Result<UGran, Exception> {
         if Self::is_reg_valid(reg) {
             if reg == Register::Zero as _ {
                 return Ok(0);
@@ -49,18 +49,27 @@ impl Registers {
         &mut self,
         tags: &mut TagController,
         reg: u8,
-        val: TaggedCapability,
+        cap: TaggedCapability,
     ) -> Result<(), Exception> {
         if Self::is_reg_valid(reg) {
             let idx = Self::reg_to_idx(reg);
-            self.regs[idx] = val.capability();
-            tags.write_reg(reg, val.is_valid()).unwrap();
+            self.regs[idx] = cap.capability();
+            tags.write_reg(reg, cap.is_valid()).unwrap();
             Ok(())
         } else {
             Err(Exception::InvalidRegAccess {
                 access: RegAccess { reg },
             })
         }
+    }
+
+    pub fn write_data(
+        &mut self,
+        tags: &mut TagController,
+        reg: u8,
+        val: UGran,
+    ) -> Result<(), Exception> {
+        self.write(tags, reg, TaggedCapability::from_ugran(val))
     }
 
     pub const fn is_reg_valid(reg: u8) -> bool {

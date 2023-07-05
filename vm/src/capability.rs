@@ -243,6 +243,10 @@ impl TaggedCapability {
         Self::new(Capability::from_ugran(ugran), false)
     }
 
+    pub const fn to_ugran(self) -> UGran {
+        self.capa.to_ugran()
+    }
+
     pub const fn capability(self) -> Capability {
         self.capa
     }
@@ -379,7 +383,7 @@ impl fmt::Debug for TaggedCapability {
                 .field("perms", &self.perms())
                 .finish()
         } else {
-            write!(f, "{}", self.capability().to_ugran())
+            write!(f, "{}", self.to_ugran())
         }
     }
 }
