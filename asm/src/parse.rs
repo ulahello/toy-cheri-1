@@ -4,7 +4,7 @@ use fruticose_vm::op::{Op, OpKind};
 use crate::lex::{LexErrTyp, Lexer, Token, TokenTyp};
 use crate::Span;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParseErr<'s> {
     pub typ: ParseErrTyp,
     pub span: Span<'s>,
@@ -15,6 +15,7 @@ pub enum TokenClass {
     Op,
     Register,
     Syscall,
+    Literal,
 }
 
 impl TokenTyp {
@@ -23,12 +24,13 @@ impl TokenTyp {
             Self::Op(_) => Some(TokenClass::Op),
             Self::Register(_) => Some(TokenClass::Register),
             Self::Syscall(_) => Some(TokenClass::Syscall),
+            Self::UnsignedInt(_) => Some(TokenClass::Literal),
             Self::Comma | Self::Newline | Self::Eof => None,
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ParseErrTyp {
     Lex(LexErrTyp),
     ExpectedTyp {
@@ -109,6 +111,7 @@ impl<'s> Parser<'s> {
                 // syscall kind as operand is inlined to its byte representation
                 TaggedCapability::from_ugran(syscall as _)
             }
+            TokenTyp::UnsignedInt(int) => TaggedCapability::from_ugran(int),
             _ => {
                 return Err(ParseErr {
                     typ: ParseErrTyp::InvalidOperand,

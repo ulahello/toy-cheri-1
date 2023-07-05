@@ -1,9 +1,11 @@
+use fruticose_vm::int::UGran;
 use fruticose_vm::op::OpKind;
 use fruticose_vm::registers::Register;
 use fruticose_vm::syscall::SyscallKind;
 use unicode_segmentation::{GraphemeIndices, UnicodeSegmentation};
 
 use core::iter::Peekable;
+use core::num::{IntErrorKind, ParseIntError};
 
 use crate::Span;
 
@@ -21,6 +23,7 @@ pub enum TokenTyp {
     Op(OpKind),
     Register(Register),
     Syscall(SyscallKind),
+    UnsignedInt(UGran), // TODO: support signed ints. also we should have a clear way to notate type of literal (eg, <number>_s for signed and <number>_u for unsigned)
 
     // if seen, immediately yield
     Comma,
@@ -29,15 +32,16 @@ pub enum TokenTyp {
     Eof,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LexErr<'s> {
     pub(crate) typ: LexErrTyp,
     pub(crate) span: Span<'s>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LexErrTyp {
     UnknownIdent,
+    InvalidUnsignedInt(ParseIntError),
 }
 
 pub struct Lexer<'s> {
@@ -71,7 +75,7 @@ impl<'s> Lexer<'s> {
     }
 
     #[must_use]
-    fn check_ctx(span: &'s str) -> Option<TokenTyp> {
+    fn check_ctx(span: &'s str) -> Result<TokenTyp, LexErrTyp> {
         let typ = match span {
             // operations
             "nop" => TokenTyp::Op(OpKind::Nop),
@@ -115,9 +119,17 @@ impl<'s> Lexer<'s> {
             // syscalls
             "SYS_EXIT" => TokenTyp::Syscall(SyscallKind::Exit),
 
-            _ => return None,
+            _ => match span.parse::<UGran>() {
+                Ok(int) => TokenTyp::UnsignedInt(int),
+                Err(err) => {
+                    if *err.kind() == IntErrorKind::PosOverflow {
+                        return Err(LexErrTyp::InvalidUnsignedInt(err));
+                    }
+                    return Err(LexErrTyp::UnknownIdent);
+                }
+            },
         };
-        Some(typ)
+        Ok(typ)
     }
 
     fn next_inner(&mut self) -> Option<<Self as Iterator>::Item> {
@@ -183,13 +195,12 @@ impl<'s> Lexer<'s> {
         }
 
         /* check context-dependent span! */
-        if let Some(typ) = Self::check_ctx(ctx.get()) {
-            Some(Ok(Token { typ, span: ctx }))
-        } else {
-            Some(Err(LexErr {
-                typ: LexErrTyp::UnknownIdent,
+        match Self::check_ctx(ctx.get()) {
+            Ok(typ) => Some(Ok(Token { typ, span: ctx })),
+            Err(err) => Some(Err(LexErr {
+                typ: err,
                 span: ctx,
-            }))
+            })),
         }
     }
 }

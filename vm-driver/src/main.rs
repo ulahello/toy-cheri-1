@@ -5,6 +5,7 @@ use tracing::{span, Level};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
+use core::num::IntErrorKind;
 use std::fs;
 use std::io::{stderr, BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -159,6 +160,12 @@ fn pretty_print_parse_err<W: Write>(
     match err.typ {
         ParseErrTyp::Lex(err) => match err {
             LexErrTyp::UnknownIdent => write!(f, "unknown identifier")?,
+            LexErrTyp::InvalidUnsignedInt(err) => match err.kind() {
+                IntErrorKind::PosOverflow => {
+                    write!(f, "unsigned integer literal overflows granule")?;
+                }
+                _ => write!(f, "unsigned integer literal is invalid ({err})")?,
+            },
         },
         ParseErrTyp::ExpectedTyp { expected, found } => {
             write!(f, "expected {expected}, but found {found}")?;
