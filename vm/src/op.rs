@@ -19,49 +19,51 @@ pub enum OpKind {
     /// Load immediate value `op2` into register `op1`.
     LoadI,
 
-    /// Load 8-bit value from memory at `op2` and zero-extend before storing it
-    /// in register `op1`.
+    /// Load 8-bit value from capability at register `op2` and zero-extend
+    /// before storing it in register `op1`.
     LoadU8,
 
-    /// Load 16-bit value from memory at `op2` and zero-extend before storing it
-    /// in register `op1`.
+    /// Load 16-bit value from capability at register `op2` and zero-extend
+    /// before storing it in register `op1`.
     LoadU16,
 
-    /// Load 32-bit value from memory at `op2` and zero-extend before storing it
-    /// in register `op1`.
+    /// Load 32-bit value from capability at register `op2` and zero-extend
+    /// before storing it in register `op1`.
     LoadU32,
 
-    /// Load 64-bit value from memory at `op2` and zero-extend before storing it
-    /// in register `op1`.
+    /// Load 64-bit value from capability at register `op2` and zero-extend
+    /// before storing it in register `op1`.
     LoadU64,
 
-    /// Load 128-bit value from memory at `op2` into register `op1`.
+    /// Load 128-bit value from capability at register `op2` into register
+    /// `op1`.
+    // TODO: rename to LoadU128
     Load128,
 
-    /// Load capability from memory at `op2` into register `op1`.
+    /// Load capability from capability at register `op2` into register `op1`.
     LoadC,
 
-    /// Store 8-bit value from the low bits of register `op2` to memory at
-    /// `op1`.
+    /// Store 8-bit value from the low bits of register `op2` to capability at
+    /// register `op1`.
     Store8,
 
-    /// Store 16-bit value from the low bits of register `op2` to memory at
-    /// `op1`.
+    /// Store 16-bit value from the low bits of register `op2` to capability at
+    /// register `op1`.
     Store16,
 
-    /// Store 32-bit value from the low bits of register `op2` to memory at
-    /// `op1`.
+    /// Store 32-bit value from the low bits of register `op2` to capability at
+    /// register `op1`.
     Store32,
 
-    /// Store 64-bit value from the low bits of register `op2` to memory at
-    /// `op1`.
+    /// Store 64-bit value from the low bits of register `op2` to capability at
+    /// register `op1`.
     Store64,
 
-    /// Store 128-bit value from the low bits of register `op2` to memory at
-    /// `op1`.
+    /// Store 128-bit value from the low bits of register `op2` to capability at
+    /// register `op1`.
     Store128,
 
-    /// Store capability from register `op2` into memory at `op1`.
+    /// Store capability from register `op2` to capability at register `op1`.
     StoreC,
 
     /// Add immediate `op3` to register `op2` and store the result in register
@@ -152,6 +154,8 @@ pub enum OpKind {
 }
 
 impl OpKind {
+    pub const MAX_OPERANDS: usize = 3;
+
     pub const fn to_byte(self) -> u8 {
         self as u8
     }
@@ -234,6 +238,65 @@ impl OpKind {
             Self::Syscall => 0,
         }
     }
+
+    pub const fn type_signature(self) -> [Option<OperandType>; 3] {
+        const fn sig<const N: usize>(
+            op: OpKind,
+            sig: [OperandType; N],
+        ) -> [Option<OperandType>; OpKind::MAX_OPERANDS] {
+            assert!(N <= OpKind::MAX_OPERANDS);
+            if sig.len() != op.operand_count() as _ {
+                panic!("signature must have correct operand cound");
+            }
+            let mut out = [None; 3];
+
+            let mut idx = 0;
+            while idx < sig.len() {
+                out[idx] = Some(sig[idx]);
+                idx += 1;
+            }
+            out
+        }
+
+        use OperandType::*;
+
+        match self {
+            Self::Nop => sig(self, []),
+            Self::LoadI => sig(self, [Register, Immediate]),
+            Self::LoadU8 => sig(self, [Register, Register]),
+            Self::LoadU16 => sig(self, [Register, Register]),
+            Self::LoadU32 => sig(self, [Register, Register]),
+            Self::LoadU64 => sig(self, [Register, Register]),
+            Self::Load128 => sig(self, [Register, Register]),
+            Self::LoadC => sig(self, [Register, Register]),
+            Self::Store8 => sig(self, [Register, Register]),
+            Self::Store16 => sig(self, [Register, Register]),
+            Self::Store32 => sig(self, [Register, Register]),
+            Self::Store64 => sig(self, [Register, Register]),
+            Self::Store128 => sig(self, [Register, Register]),
+            Self::StoreC => sig(self, [Register, Register]),
+            Self::AddI => sig(self, [Register, Register, Immediate]),
+            Self::Add => sig(self, [Register, Register, Register]),
+            Self::Sub => sig(self, [Register, Register, Register]),
+            Self::SltsI => sig(self, [Register, Register, Immediate]),
+            Self::SltuI => sig(self, [Register, Register, Immediate]),
+            Self::Slts => sig(self, [Register, Register, Register]),
+            Self::Sltu => sig(self, [Register, Register, Register]),
+            Self::XorI => sig(self, [Register, Register, Immediate]),
+            Self::Xor => sig(self, [Register, Register, Register]),
+            Self::OrI => sig(self, [Register, Register, Immediate]),
+            Self::Or => sig(self, [Register, Register, Register]),
+            Self::AndI => sig(self, [Register, Register, Immediate]),
+            Self::And => sig(self, [Register, Register, Register]),
+            Self::SllI => sig(self, [Register, Register, Immediate]),
+            Self::Sll => sig(self, [Register, Register, Register]),
+            Self::SrlI => sig(self, [Register, Register, Immediate]),
+            Self::Srl => sig(self, [Register, Register, Register]),
+            Self::SraI => sig(self, [Register, Register, Immediate]),
+            Self::Sra => sig(self, [Register, Register, Register]),
+            Self::Syscall => sig(self, []),
+        }
+    }
 }
 
 impl Ty for OpKind {
@@ -288,6 +351,22 @@ impl fmt::Display for OpKind {
             Self::SraI => "srai",
             Self::Sra => "sra",
             Self::Syscall => "syscall",
+        };
+        f.write_str(s)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OperandType {
+    Register,
+    Immediate,
+}
+
+impl fmt::Display for OperandType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
+            Self::Register => "register",
+            Self::Immediate => "immediate",
         };
         f.write_str(s)
     }

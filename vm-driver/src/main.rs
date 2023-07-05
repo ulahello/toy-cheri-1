@@ -183,6 +183,9 @@ fn pretty_print_parse_err<W: Write>(
             }
         }
         ParseErrTyp::InvalidOperand => write!(f, "invalid operand")?,
+        ParseErrTyp::OperandTypeMismatch { expected, found } => {
+            write!(f, "operand mismatch: expected {expected} but found {found}")?;
+        }
     }
     writeln!(f)?;
 

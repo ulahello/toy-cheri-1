@@ -1,5 +1,5 @@
 use fruticose_vm::int::UGran;
-use fruticose_vm::op::OpKind;
+use fruticose_vm::op::{OpKind, OperandType};
 use fruticose_vm::registers::Register;
 use fruticose_vm::syscall::SyscallKind;
 use unicode_segmentation::{GraphemeIndices, UnicodeSegmentation};
@@ -32,6 +32,16 @@ pub enum TokenTyp {
     Newline,
 
     Eof,
+}
+
+impl TokenTyp {
+    pub const fn operand_type(self) -> Option<OperandType> {
+        match self {
+            Self::Register(_) => Some(OperandType::Register),
+            Self::Syscall(_) | Self::UnsignedInt(_) => Some(OperandType::Immediate),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

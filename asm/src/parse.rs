@@ -1,5 +1,5 @@
 use fruticose_vm::capability::TaggedCapability;
-use fruticose_vm::op::{Op, OpKind};
+use fruticose_vm::op::{Op, OpKind, OperandType};
 
 use crate::lex::{LexErrTyp, Lexer, Token, TokenTyp};
 use crate::Span;
@@ -42,6 +42,10 @@ pub enum ParseErrTyp {
         found: TokenTyp,
     },
     InvalidOperand,
+    OperandTypeMismatch {
+        expected: OperandType,
+        found: OperandType,
+    },
 }
 
 pub struct Parser<'s> {
@@ -97,11 +101,27 @@ impl<'s> Parser<'s> {
         }
     }
 
-    fn expect_operand(&mut self, last: bool) -> Result<TaggedCapability, ParseErr<'s>> {
-        // TODO: assembler could help out if u pass odd operands
+    fn expect_operand(
+        &mut self,
+        expected_typ: OperandType,
+        last: bool,
+    ) -> Result<TaggedCapability, ParseErr<'s>> {
         let try_operand = self.expect_token()?;
         if !last {
             Self::expect_typ(TokenTyp::Comma, self.expect_token()?)?;
+        }
+        let operand_typ = try_operand.typ.operand_type().ok_or(ParseErr {
+            typ: ParseErrTyp::InvalidOperand,
+            span: try_operand.span,
+        })?;
+        if operand_typ != expected_typ {
+            return Err(ParseErr {
+                typ: ParseErrTyp::OperandTypeMismatch {
+                    expected: expected_typ,
+                    found: operand_typ,
+                },
+                span: try_operand.span,
+            });
         }
         let tcap = match try_operand.typ {
             TokenTyp::Register(reg) => {
@@ -113,12 +133,7 @@ impl<'s> Parser<'s> {
                 TaggedCapability::from_ugran(syscall as _)
             }
             TokenTyp::UnsignedInt(int) => TaggedCapability::from_ugran(int),
-            _ => {
-                return Err(ParseErr {
-                    typ: ParseErrTyp::InvalidOperand,
-                    span: try_operand.span,
-                })
-            }
+            _ => unreachable!(),
         };
         Ok(tcap)
     }
@@ -130,34 +145,18 @@ impl<'s> Parser<'s> {
         /* now we expect a variable number of operands to the operation
          * (determined by OpKind::arg_count) */
         let argc = op_kind.operand_count();
-
-        let op: Op = match argc {
-            0 => Op {
-                kind: op_kind,
-                op1: TaggedCapability::INVALID,
-                op2: TaggedCapability::INVALID,
-                op3: TaggedCapability::INVALID,
-            },
-            1 => Op {
-                kind: op_kind,
-                op1: self.expect_operand(true)?,
-                op2: TaggedCapability::INVALID,
-                op3: TaggedCapability::INVALID,
-            },
-            2 => Op {
-                kind: op_kind,
-                op1: self.expect_operand(false)?,
-                op2: self.expect_operand(true)?,
-                op3: TaggedCapability::INVALID,
-            },
-            3 => Op {
-                kind: op_kind,
-                op1: self.expect_operand(false)?,
-                op2: self.expect_operand(false)?,
-                op3: self.expect_operand(true)?,
-            },
-            4.. => unreachable!("operations have at most 3 operands"),
+        let mut op = Op {
+            kind: op_kind,
+            op1: TaggedCapability::INVALID,
+            op2: TaggedCapability::INVALID,
+            op3: TaggedCapability::INVALID,
         };
+        let args = [&mut op.op1, &mut op.op2, &mut op.op3];
+        for arg in 0..argc {
+            let last = arg + 1 == argc;
+            let typ = op_kind.type_signature()[arg as usize].unwrap();
+            *args[arg as usize] = self.expect_operand(typ, last)?;
+        }
 
         // verify that operation ends with newline
         Self::expect_typ(TokenTyp::Newline, self.expect_token()?)?;
