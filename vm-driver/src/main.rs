@@ -168,6 +168,7 @@ fn pretty_print_parse_err<W: Write>(
             },
         },
         ParseErrTyp::ExpectedTyp { expected, found } => {
+            // TODO: show operand count if missing comma
             write!(f, "expected {expected}, but found {found}")?;
         }
         ParseErrTyp::ExpectedClass { expected, found } => {
@@ -182,6 +183,7 @@ fn pretty_print_parse_err<W: Write>(
     }
     writeln!(f)?;
 
+    // TODO: out of bounds possible
     let pre_span = &span.get_line()[..span.col_idx];
     let in_span = span.get();
     let post_span = &span.get_line()[span.col_idx..][span.len..];

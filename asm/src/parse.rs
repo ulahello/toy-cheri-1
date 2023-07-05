@@ -98,6 +98,7 @@ impl<'s> Parser<'s> {
     }
 
     fn expect_operand(&mut self, last: bool) -> Result<TaggedCapability, ParseErr<'s>> {
+        // TODO: assembler could help out if u pass odd operands
         let try_operand = self.expect_token()?;
         if !last {
             Self::expect_typ(TokenTyp::Comma, self.expect_token()?)?;

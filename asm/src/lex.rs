@@ -11,6 +11,8 @@ use crate::Span;
 
 pub const COMMENT: &str = ";";
 
+// TODO: warn about suspicious unicode characters
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Token<'s> {
     pub(crate) typ: TokenTyp,
