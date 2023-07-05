@@ -107,13 +107,13 @@ impl<'s> Parser<'s> {
         last: bool,
     ) -> Result<TaggedCapability, ParseErr<'s>> {
         let try_operand = self.expect_token()?;
-        if !last {
-            Self::expect_typ(TokenTyp::Comma, self.expect_token()?)?;
-        }
         let operand_typ = try_operand.typ.operand_type().ok_or(ParseErr {
             typ: ParseErrTyp::InvalidOperand,
             span: try_operand.span,
         })?;
+        if !last {
+            Self::expect_typ(TokenTyp::Comma, self.expect_token()?)?;
+        }
         if operand_typ != expected_typ {
             return Err(ParseErr {
                 typ: ParseErrTyp::OperandTypeMismatch {

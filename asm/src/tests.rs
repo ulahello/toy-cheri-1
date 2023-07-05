@@ -626,7 +626,9 @@ fn add_lex() {
 }
 
 mod crash {
-    use crate::lex::TokenTyp;
+    use fruticose_vm::op::OpKind;
+
+    use crate::lex::{Lexer, Token, TokenTyp};
     use crate::parse::{ParseErr, ParseErrTyp, Parser};
     use crate::Span;
 
@@ -635,22 +637,53 @@ mod crash {
     #[test]
     fn parser_eof_unreachable() {
         let src = CRASH_3;
-        let mut parser = Parser::new(src);
-        assert_eq!(
-            parser.next(),
-            Some(Err(ParseErr {
-                typ: ParseErrTyp::ExpectedTyp {
-                    expected: TokenTyp::Newline,
-                    found: TokenTyp::Eof
-                },
-                span: Span {
-                    line: 0,
-                    col_idx: 0,
-                    len: 5,
-                    line_start: 0,
-                    src,
-                }
-            }))
-        );
+
+        {
+            let mut lexer = Lexer::new(src);
+            assert_eq!(
+                lexer.next(),
+                Some(Ok(Token {
+                    typ: TokenTyp::Op(OpKind::LoadI),
+                    span: Span {
+                        line: 0,
+                        col_idx: 0,
+                        len: 5,
+                        line_start: 0,
+                        src
+                    }
+                }))
+            );
+            assert_eq!(
+                lexer.next(),
+                Some(Ok(Token {
+                    typ: TokenTyp::Eof,
+                    span: Span {
+                        line: 0,
+                        col_idx: 5,
+                        len: 0,
+                        line_start: 0,
+                        src
+                    }
+                }))
+            );
+            assert_eq!(lexer.next(), None);
+        }
+
+        {
+            let mut parser = Parser::new(src);
+            assert_eq!(
+                parser.next(),
+                Some(Err(ParseErr {
+                    typ: ParseErrTyp::InvalidOperand,
+                    span: Span {
+                        line: 0,
+                        col_idx: 5,
+                        len: 0,
+                        line_start: 0,
+                        src,
+                    }
+                }))
+            );
+        }
     }
 }
