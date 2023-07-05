@@ -437,11 +437,11 @@ fn add() {
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
-            typ: TokenTyp::Op(OpKind::Add),
+            typ: TokenTyp::Op(OpKind::AddI),
             span: Span {
                 line: 4,
                 col_idx: 0,
-                len: 3,
+                len: 4,
                 line_start: 58,
                 src
             }
@@ -453,7 +453,7 @@ fn add() {
             typ: TokenTyp::Register(Register::T0),
             span: Span {
                 line: 4,
-                col_idx: 4,
+                col_idx: 5,
                 len: 2,
                 line_start: 58,
                 src
@@ -466,7 +466,7 @@ fn add() {
             typ: TokenTyp::Comma,
             span: Span {
                 line: 4,
-                col_idx: 6,
+                col_idx: 7,
                 len: 1,
                 line_start: 58,
                 src
@@ -476,11 +476,11 @@ fn add() {
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
-            typ: TokenTyp::Register(Register::Zero),
+            typ: TokenTyp::Register(Register::T0),
             span: Span {
                 line: 4,
-                col_idx: 8,
-                len: 4,
+                col_idx: 9,
+                len: 2,
                 line_start: 58,
                 src
             }
@@ -492,7 +492,7 @@ fn add() {
             typ: TokenTyp::Comma,
             span: Span {
                 line: 4,
-                col_idx: 12,
+                col_idx: 11,
                 len: 1,
                 line_start: 58,
                 src
@@ -503,6 +503,19 @@ fn add() {
         lexer.next(),
         Some(Ok(Token {
             typ: TokenTyp::UnsignedInt(1),
+            span: Span {
+                line: 4,
+                col_idx: 13,
+                len: 1,
+                line_start: 58,
+                src
+            }
+        }))
+    );
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token {
+            typ: TokenTyp::Newline,
             span: Span {
                 line: 4,
                 col_idx: 14,
@@ -517,23 +530,10 @@ fn add() {
         Some(Ok(Token {
             typ: TokenTyp::Newline,
             span: Span {
-                line: 4,
-                col_idx: 15,
-                len: 1,
-                line_start: 58,
-                src
-            }
-        }))
-    );
-    assert_eq!(
-        lexer.next(),
-        Some(Ok(Token {
-            typ: TokenTyp::Newline,
-            span: Span {
                 line: 5,
                 col_idx: 16,
                 len: 1,
-                line_start: 74,
+                line_start: 73,
                 src
             }
         }))
@@ -546,7 +546,7 @@ fn add() {
                 line: 6,
                 col_idx: 0,
                 len: 1,
-                line_start: 91,
+                line_start: 90,
                 src
             }
         }))
@@ -559,7 +559,7 @@ fn add() {
                 line: 7,
                 col_idx: 0,
                 len: 5,
-                line_start: 92,
+                line_start: 91,
                 src
             }
         }))
@@ -572,7 +572,7 @@ fn add() {
                 line: 7,
                 col_idx: 6,
                 len: 2,
-                line_start: 92,
+                line_start: 91,
                 src
             }
         }))
@@ -585,7 +585,7 @@ fn add() {
                 line: 7,
                 col_idx: 8,
                 len: 1,
-                line_start: 92,
+                line_start: 91,
                 src
             }
         }))
@@ -598,7 +598,7 @@ fn add() {
                 line: 7,
                 col_idx: 10,
                 len: 8,
-                line_start: 92,
+                line_start: 91,
                 src
             }
         }))
@@ -611,7 +611,7 @@ fn add() {
                 line: 7,
                 col_idx: 18,
                 len: 1,
-                line_start: 92,
+                line_start: 91,
                 src
             }
         }))
@@ -624,7 +624,7 @@ fn add() {
                 line: 8,
                 col_idx: 0,
                 len: 7,
-                line_start: 111,
+                line_start: 110,
                 src
             }
         }))
@@ -637,7 +637,7 @@ fn add() {
                 line: 8,
                 col_idx: 7,
                 len: 1,
-                line_start: 111,
+                line_start: 110,
                 src
             }
         }))
@@ -650,7 +650,7 @@ fn add() {
                 line: 9,
                 col_idx: 0,
                 len: 0,
-                line_start: 119,
+                line_start: 118,
                 src
             }
         }))
