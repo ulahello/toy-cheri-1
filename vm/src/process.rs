@@ -4,7 +4,7 @@ use crate::abi::Ty;
 use crate::access::MemAccessKind;
 use crate::capability::TaggedCapability;
 use crate::exception::Exception;
-use crate::int::{SGran, UGran};
+use crate::int::{SGran, UAddr, UGran};
 use crate::mem::Memory;
 use crate::op::{Op, OpKind};
 use crate::registers::Register;
@@ -30,6 +30,8 @@ impl Memory {
             pc = pc.addr().get()
         );
         let _guard = span.enter();
+
+        let mut return_address = pc.set_addr(pc.addr().add(Op::LAYOUT.size));
 
         tracing::trace!("executing {:?}", op);
 
@@ -268,6 +270,76 @@ impl Memory {
                     .write_data(&mut self.tags, dst, unsign(val >> amount))?;
             }
 
+            OpKind::Jal => {
+                let ra_dst = reg(op.op1);
+                let offset = op.op2.to_ugran() as UAddr;
+                self.regs.write(&mut self.tags, ra_dst, return_address)?;
+                return_address = pc.set_addr(pc.addr().add(offset));
+            }
+
+            OpKind::Jalr => {
+                let ra_dst = reg(op.op1);
+                let offset_reg = self.regs.read_data(reg(op.op2))? as UAddr;
+                let offset_imm = op.op3.to_ugran() as UAddr;
+                let offset = offset_reg.wrapping_add(offset_imm);
+                self.regs.write(&mut self.tags, ra_dst, return_address)?;
+                return_address = pc.set_addr(pc.addr().add(offset));
+            }
+
+            OpKind::Beq => {
+                let cmp1 = self.regs.read_data(reg(op.op1))?;
+                let cmp2 = self.regs.read_data(reg(op.op2))?;
+                let offset = op.op3.to_ugran() as UAddr;
+                if cmp1 == cmp2 {
+                    return_address = pc.set_addr(pc.addr().add(offset));
+                }
+            }
+
+            OpKind::Bne => {
+                let cmp1 = self.regs.read_data(reg(op.op1))?;
+                let cmp2 = self.regs.read_data(reg(op.op2))?;
+                let offset = op.op3.to_ugran() as UAddr;
+                if cmp1 != cmp2 {
+                    return_address = pc.set_addr(pc.addr().add(offset));
+                }
+            }
+
+            OpKind::Blts => {
+                let cmp1 = sign(self.regs.read_data(reg(op.op1))?);
+                let cmp2 = sign(self.regs.read_data(reg(op.op2))?);
+                let offset = op.op3.to_ugran() as UAddr;
+                if cmp1 < cmp2 {
+                    return_address = pc.set_addr(pc.addr().add(offset));
+                }
+            }
+
+            OpKind::Bges => {
+                let cmp1 = sign(self.regs.read_data(reg(op.op1))?);
+                let cmp2 = sign(self.regs.read_data(reg(op.op2))?);
+                let offset = op.op3.to_ugran() as UAddr;
+                if cmp1 >= cmp2 {
+                    return_address = pc.set_addr(pc.addr().add(offset));
+                }
+            }
+
+            OpKind::Bltu => {
+                let cmp1 = self.regs.read_data(reg(op.op1))?;
+                let cmp2 = self.regs.read_data(reg(op.op2))?;
+                let offset = op.op3.to_ugran() as UAddr;
+                if cmp1 < cmp2 {
+                    return_address = pc.set_addr(pc.addr().add(offset));
+                }
+            }
+
+            OpKind::Bgeu => {
+                let cmp1 = self.regs.read_data(reg(op.op1))?;
+                let cmp2 = self.regs.read_data(reg(op.op2))?;
+                let offset = op.op3.to_ugran() as UAddr;
+                if cmp1 >= cmp2 {
+                    return_address = pc.set_addr(pc.addr().add(offset));
+                }
+            }
+
             OpKind::Syscall => {
                 let kind = self.regs.read(&self.tags, Register::A0 as _)?;
                 let kind = SyscallKind::from_byte(kind.to_ugran() as u8)?;
@@ -279,7 +351,7 @@ impl Memory {
         }
 
         // increment pc
-        pc = pc.set_addr(pc.addr().add(Op::LAYOUT.size));
+        pc = return_address;
         self.regs
             .write(&mut self.tags, Register::Pc as _, pc)
             .unwrap();

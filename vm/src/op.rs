@@ -6,8 +6,8 @@ use crate::exception::Exception;
 use crate::mem::Memory;
 
 // TODO: document which operations operate on capabilities
+// TODO: document that branch instructions truncate to Address sized offsets
 
-/* TODOOO: turing complete memory manipulation */
 /* TODOOO: manipulation of cababilities */
 // informally based on riscv but this is not by definition so could change anytime
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -147,6 +147,38 @@ pub enum OpKind {
     /// `op1`.
     Sra,
 
+    /// Offset the program counter by immediate `op2` and store the return
+    /// address in register `op1`.
+    Jal,
+
+    /// Offset the program counter by the sum of immediate `op3` and register
+    /// `op2` and store the return address in register `op1`.
+    Jalr,
+
+    /// Offset the program counter by immediate `op3` if the values of registers
+    /// `op1` and `op2` are equal.
+    Beq,
+
+    /// Offset the program counter by immediate `op3` if the values of registers
+    /// `op1` and `op2` are not equal.
+    Bne,
+
+    /// Offset the program counter by immediate `op3` if the value of registers
+    /// `op1` is less `op2`, using signed comparison.
+    Blts,
+
+    /// Offset the program counter by immediate `op3` if the value of registers
+    /// `op1` is greater than or equal to `op2`, using signed comparison.
+    Bges,
+
+    /// Offset the program counter by immediate `op3` if value of registers
+    /// `op1` is less than `op2`, using unsigned comparison.
+    Bltu,
+
+    /// Offset the program counter by immediate `op3` if the value of registers
+    /// `op1` is greater than or equal to `op2`, using unsigned comparison.
+    Bgeu,
+
     /// Perform a system call. The [kind](crate::syscall::SyscallKind) is
     /// determined by the value in register `a0`.
     Syscall,
@@ -194,7 +226,15 @@ impl OpKind {
             30 => Ok(Self::Srl),
             31 => Ok(Self::SraI),
             32 => Ok(Self::Sra),
-            33 => Ok(Self::Syscall),
+            33 => Ok(Self::Jal),
+            34 => Ok(Self::Jalr),
+            35 => Ok(Self::Beq),
+            36 => Ok(Self::Bne),
+            37 => Ok(Self::Blts),
+            38 => Ok(Self::Bges),
+            39 => Ok(Self::Bltu),
+            40 => Ok(Self::Bgeu),
+            41 => Ok(Self::Syscall),
             _ => Err(Exception::InvalidOpKind { byte }),
         }
     }
@@ -234,6 +274,14 @@ impl OpKind {
             Self::Srl => 3,
             Self::SraI => 3,
             Self::Sra => 3,
+            Self::Jal => 2,
+            Self::Jalr => 3,
+            Self::Beq => 3,
+            Self::Bne => 3,
+            Self::Blts => 3,
+            Self::Bges => 3,
+            Self::Bltu => 3,
+            Self::Bgeu => 3,
             Self::Syscall => 0,
         }
     }
@@ -293,6 +341,14 @@ impl OpKind {
             Self::Srl => sig(self, [Register, Register, Register]),
             Self::SraI => sig(self, [Register, Register, Immediate]),
             Self::Sra => sig(self, [Register, Register, Register]),
+            Self::Jal => sig(self, [Register, Immediate]),
+            Self::Jalr => sig(self, [Register, Register, Immediate]),
+            Self::Beq => sig(self, [Register, Register, Immediate]),
+            Self::Bne => sig(self, [Register, Register, Immediate]),
+            Self::Blts => sig(self, [Register, Register, Immediate]),
+            Self::Bges => sig(self, [Register, Register, Immediate]),
+            Self::Bltu => sig(self, [Register, Register, Immediate]),
+            Self::Bgeu => sig(self, [Register, Register, Immediate]),
             Self::Syscall => sig(self, []),
         }
     }
@@ -349,6 +405,14 @@ impl fmt::Display for OpKind {
             Self::Srl => "srl",
             Self::SraI => "srai",
             Self::Sra => "sra",
+            Self::Jal => "jal",
+            Self::Jalr => "jalr",
+            Self::Beq => "beq",
+            Self::Bne => "bne",
+            Self::Blts => "blts",
+            Self::Bges => "bges",
+            Self::Bltu => "bltu",
+            Self::Bgeu => "bgeu",
             Self::Syscall => "syscall",
         };
         f.write_str(s)

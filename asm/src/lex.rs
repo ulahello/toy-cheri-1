@@ -123,6 +123,14 @@ impl<'s> Lexer<'s> {
             "srl" => TokenTyp::Op(OpKind::Srl),
             "srai" => TokenTyp::Op(OpKind::SraI),
             "sra" => TokenTyp::Op(OpKind::Sra),
+            "jal" => TokenTyp::Op(OpKind::Jal),
+            "jalr" => TokenTyp::Op(OpKind::Jalr),
+            "beq" => TokenTyp::Op(OpKind::Beq),
+            "bne" => TokenTyp::Op(OpKind::Bne),
+            "blts" => TokenTyp::Op(OpKind::Blts),
+            "bges" => TokenTyp::Op(OpKind::Bges),
+            "bltu" => TokenTyp::Op(OpKind::Bltu),
+            "bgeu" => TokenTyp::Op(OpKind::Bgeu),
             "syscall" => TokenTyp::Op(OpKind::Syscall),
 
             // registers
