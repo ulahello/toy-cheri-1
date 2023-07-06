@@ -149,34 +149,50 @@ pub enum OpKind {
 
     /// Offset the program counter by immediate `op2` and store the return
     /// address in register `op1`.
+    ///
+    /// Offset is computed in multiples of `Op::LAYOUT.size`.
     Jal,
 
     /// Offset the program counter by the sum of immediate `op3` and register
     /// `op2` and store the return address in register `op1`.
+    ///
+    /// Offset is computed in multiples of `Op::LAYOUT.size`.
     Jalr,
 
     /// Offset the program counter by immediate `op3` if the values of registers
     /// `op1` and `op2` are equal.
+    ///
+    /// Offset is computed in multiples of `Op::LAYOUT.size`.
     Beq,
 
     /// Offset the program counter by immediate `op3` if the values of registers
     /// `op1` and `op2` are not equal.
+    ///
+    /// Offset is computed in multiples of `Op::LAYOUT.size`.
     Bne,
 
     /// Offset the program counter by immediate `op3` if the value of registers
     /// `op1` is less `op2`, using signed comparison.
+    ///
+    /// Offset is computed in multiples of `Op::LAYOUT.size`.
     Blts,
 
     /// Offset the program counter by immediate `op3` if the value of registers
     /// `op1` is greater than or equal to `op2`, using signed comparison.
+    ///
+    /// Offset is computed in multiples of `Op::LAYOUT.size`.
     Bges,
 
     /// Offset the program counter by immediate `op3` if value of registers
     /// `op1` is less than `op2`, using unsigned comparison.
+    ///
+    /// Offset is computed in multiples of `Op::LAYOUT.size`.
     Bltu,
 
     /// Offset the program counter by immediate `op3` if the value of registers
     /// `op1` is greater than or equal to `op2`, using unsigned comparison.
+    ///
+    /// Offset is computed in multiples of `Op::LAYOUT.size`.
     Bgeu,
 
     /// Perform a system call. The [kind](crate::syscall::SyscallKind) is
@@ -447,9 +463,6 @@ pub struct Op {
 }
 
 impl Op {
-    /* TODO: currently implemented as constant size, but variable size is more
-     * memory efficient because not all operands are always needed */
-
     pub const fn nop() -> Self {
         Self {
             kind: OpKind::Nop,
