@@ -274,7 +274,7 @@ impl Memory {
                 let ra_dst = reg(op.op1);
                 let offset = op.op2.to_ugran() as UAddr;
                 self.regs.write(&mut self.tags, ra_dst, return_address)?;
-                return_address = pc.set_addr(pc.addr().add(offset));
+                return_address = pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
             }
 
             OpKind::Jalr => {
@@ -283,7 +283,7 @@ impl Memory {
                 let offset_imm = op.op3.to_ugran() as UAddr;
                 let offset = offset_reg.wrapping_add(offset_imm);
                 self.regs.write(&mut self.tags, ra_dst, return_address)?;
-                return_address = pc.set_addr(pc.addr().add(offset));
+                return_address = pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
             }
 
             OpKind::Beq => {
@@ -291,7 +291,8 @@ impl Memory {
                 let cmp2 = self.regs.read_data(reg(op.op2))?;
                 let offset = op.op3.to_ugran() as UAddr;
                 if cmp1 == cmp2 {
-                    return_address = pc.set_addr(pc.addr().add(offset));
+                    return_address =
+                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
                 }
             }
 
@@ -300,7 +301,8 @@ impl Memory {
                 let cmp2 = self.regs.read_data(reg(op.op2))?;
                 let offset = op.op3.to_ugran() as UAddr;
                 if cmp1 != cmp2 {
-                    return_address = pc.set_addr(pc.addr().add(offset));
+                    return_address =
+                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
                 }
             }
 
@@ -309,7 +311,8 @@ impl Memory {
                 let cmp2 = sign(self.regs.read_data(reg(op.op2))?);
                 let offset = op.op3.to_ugran() as UAddr;
                 if cmp1 < cmp2 {
-                    return_address = pc.set_addr(pc.addr().add(offset));
+                    return_address =
+                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
                 }
             }
 
@@ -318,7 +321,8 @@ impl Memory {
                 let cmp2 = sign(self.regs.read_data(reg(op.op2))?);
                 let offset = op.op3.to_ugran() as UAddr;
                 if cmp1 >= cmp2 {
-                    return_address = pc.set_addr(pc.addr().add(offset));
+                    return_address =
+                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
                 }
             }
 
@@ -327,7 +331,8 @@ impl Memory {
                 let cmp2 = self.regs.read_data(reg(op.op2))?;
                 let offset = op.op3.to_ugran() as UAddr;
                 if cmp1 < cmp2 {
-                    return_address = pc.set_addr(pc.addr().add(offset));
+                    return_address =
+                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
                 }
             }
 
@@ -336,7 +341,8 @@ impl Memory {
                 let cmp2 = self.regs.read_data(reg(op.op2))?;
                 let offset = op.op3.to_ugran() as UAddr;
                 if cmp1 >= cmp2 {
-                    return_address = pc.set_addr(pc.addr().add(offset));
+                    return_address =
+                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
                 }
             }
 
