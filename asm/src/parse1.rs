@@ -68,7 +68,7 @@ pub enum OperandType {
     Unused,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OperandVal<'s> {
     Known(TaggedCapability),
     Ref(Span<'s>),
@@ -83,26 +83,26 @@ impl<'s> OperandVal<'s> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Operand<'s> {
     pub typ: OperandType,
     pub val: Option<OperandVal<'s>>,
 }
 
 impl Operand<'static> {
-    const UNUSED: Self = Self {
+    pub const UNUSED: Self = Self {
         typ: OperandType::Unused,
         val: None,
     };
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Label<'s> {
     pub id: Span<'s>,
     pub op_idx: usize,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct XOp<'s> {
     pub kind: OpKind,
     pub op1: Operand<'s>,
@@ -110,7 +110,7 @@ pub struct XOp<'s> {
     pub op3: Operand<'s>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Stmt<'s> {
     Label(Label<'s>),
     Op(XOp<'s>),
