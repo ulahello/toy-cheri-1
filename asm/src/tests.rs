@@ -148,7 +148,7 @@ fn exit_lex() {
 }
 
 #[test]
-fn exit_parse() {
+fn exit_parse2() {
     let src = EXIT;
     let mut parser = Parser2::new(src);
     assert_eq!(parser.next(), Some(Ok(Op::nop())));
