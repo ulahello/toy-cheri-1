@@ -4,7 +4,7 @@ use fruticose_vm::registers::Register;
 use fruticose_vm::syscall::SyscallKind;
 
 use crate::lex::{Lexer, Token, TokenTyp};
-use crate::parse::Parser;
+use crate::parse2::Parser2;
 use crate::Span;
 
 const EXIT: &str = include_str!("../examples/exit.asm");
@@ -150,7 +150,7 @@ fn exit_lex() {
 #[test]
 fn exit_parse() {
     let src = EXIT;
-    let mut parser = Parser::new(src);
+    let mut parser = Parser2::new(src);
     assert_eq!(parser.next(), Some(Ok(Op::nop())));
     assert_eq!(
         parser.next(),
@@ -629,7 +629,8 @@ mod crash {
     use fruticose_vm::op::OpKind;
 
     use crate::lex::{Lexer, Token, TokenTyp};
-    use crate::parse::{ParseErr, ParseErrTyp, Parser};
+    use crate::parse1::{ParseErr, ParseErrTyp};
+    use crate::parse2::Parser2;
     use crate::Span;
 
     const CRASH_3: &str = include_str!("../examples/crash-3.asm");
@@ -670,7 +671,7 @@ mod crash {
         }
 
         {
-            let mut parser = Parser::new(src);
+            let mut parser = Parser2::new(src);
             assert_eq!(
                 parser.next(),
                 Some(Err(ParseErr {
