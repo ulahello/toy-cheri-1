@@ -103,7 +103,10 @@ fn assemble_init(init: &Path) -> anyhow::Result<Vec<Op>> {
         }
     }
     if err_count > 0 {
-        anyhow::bail!("failed to assemble init program due to {err_count} previous errors");
+        anyhow::bail!(
+            "failed to assemble init program due to {err_count} previous error{}",
+            if err_count == 1 { "" } else { "s" }
+        );
     }
     Ok(ops)
 }
