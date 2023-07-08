@@ -1,5 +1,6 @@
 mod exec {
-    use fruticose_asm::parse::{ParseErr, Parser};
+    use fruticose_asm::parse1::ParseErr;
+    use fruticose_asm::parse2::Parser2;
     use fruticose_vm::capability::TaggedCapability;
     use fruticose_vm::exception::Exception;
     use fruticose_vm::mem::Memory;
@@ -9,7 +10,7 @@ mod exec {
     const ADD: &str = include_str!("../../asm/examples/add.asm");
 
     fn assemble(src: &str) -> Result<Vec<Op>, ParseErr> {
-        let ops = Parser::new(src)
+        let ops = Parser2::new(src)
             .into_iter()
             .collect::<Result<Vec<_>, _>>()?;
         Ok(ops)
