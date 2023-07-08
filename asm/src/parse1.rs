@@ -209,19 +209,6 @@ impl<'s> Parser1<'s> {
         }
     }
 
-    fn expect_op_kind(tok: Token<'s>) -> Result<OpKind, ParseErr<'s>> {
-        match tok.typ {
-            TokenTyp::Op(kind) => Ok(kind),
-            found => Err(ParseErr {
-                typ: ParseErrTyp::ExpectedClass {
-                    expected: TokenClass::Op,
-                    found,
-                },
-                span: tok.span,
-            }),
-        }
-    }
-
     fn expect_typ(expect: TokenTyp, found: Token<'s>) -> Result<(), ParseErr<'s>> {
         if found.typ == expect {
             Ok(())
