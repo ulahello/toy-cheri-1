@@ -6,6 +6,10 @@ use core::iter::Peekable;
 use crate::lex::{LexErrTyp, Lexer, Token, TokenTyp};
 use crate::Span;
 
+/* TODOO: if `next` last yielded Err, context of call stack is lost so parser
+ * may for instance expect that an operand is actually the start of an
+ * operation */
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParseErr<'s> {
     pub typ: ParseErrTyp<'s>,
