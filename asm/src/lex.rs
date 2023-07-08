@@ -91,7 +91,6 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    #[must_use]
     fn check_ctx(span: &'s str) -> Result<TokenTyp, LexErrTyp> {
         let typ = match span {
             // operations
