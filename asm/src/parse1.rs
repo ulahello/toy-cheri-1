@@ -1,6 +1,8 @@
 use fruticose_vm::capability::TaggedCapability;
 use fruticose_vm::op::OpKind;
 
+use core::iter::Peekable;
+
 use crate::lex::{LexErrTyp, Lexer, Token, TokenTyp};
 use crate::Span;
 
@@ -182,14 +184,14 @@ pub const fn type_signature(op: OpKind) -> [Option<OperandType>; 3] {
 }
 
 pub struct Parser1<'s> {
-    lexer: Lexer<'s>,
+    lexer: Peekable<Lexer<'s>>,
     op_idx: usize,
 }
 
 impl<'s> Parser1<'s> {
     pub fn new(src: &'s str) -> Self {
         Self {
-            lexer: Lexer::new(src),
+            lexer: Lexer::new(src).peekable(),
             op_idx: 0,
         }
     }
@@ -303,6 +305,9 @@ impl<'s> Parser1<'s> {
     fn next_inner(&mut self) -> Result<Option<Stmt<'s>>, ParseErr<'s>> {
         // skip newlines and handle eof
         let try_start = loop {
+            if self.lexer.peek().is_none() {
+                return Ok(None);
+            }
             let tok = self.expect_token()?;
             match tok.typ {
                 TokenTyp::Newline => continue,
