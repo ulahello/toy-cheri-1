@@ -7,10 +7,10 @@ impl fmt::Display for TokenTyp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let class = self.classify();
         match self {
-            Self::Op(op) => write!(f, "{class} '{op}'", class = class.unwrap()),
-            Self::Register(reg) => write!(f, "{class} '{reg}'", class = class.unwrap()),
-            Self::Syscall(syscall) => write!(f, "{class} '{syscall}'", class = class.unwrap()),
-            Self::UnsignedInt(num) => write!(f, "{class} {num}", class = class.unwrap()),
+            Self::Op(op) => write!(f, "{class} {op}", class = class.unwrap()),
+            Self::Register(reg) => write!(f, "{class} {reg}", class = class.unwrap()),
+            Self::Syscall(syscall) => write!(f, "{class} {syscall}", class = class.unwrap()),
+            Self::UnsignedInt(_) => write!(f, "{class} number", class = class.unwrap()),
             Self::Identifier => write!(f, "identifier"),
             Self::Comma => write!(f, "comma"),
             Self::Colon => write!(f, "colon"),
