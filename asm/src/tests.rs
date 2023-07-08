@@ -917,7 +917,9 @@ mod crash {
             assert_eq!(
                 parser.next(),
                 Some(Err(ParseErr {
-                    typ: ParseErrTyp::InvalidOperand,
+                    typ: ParseErrTyp::InvalidOperand {
+                        found: TokenTyp::Eof
+                    },
                     span: Span {
                         line: 0,
                         col_idx: 5,

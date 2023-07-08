@@ -26,7 +26,9 @@ pub enum ParseErrTyp<'s> {
     InvalidStmtStart {
         found: TokenTyp,
     },
-    InvalidOperand,
+    InvalidOperand {
+        found: TokenTyp,
+    },
     OperandTypeMismatch {
         expected: OperandType,
         found: OperandType,
@@ -232,7 +234,9 @@ impl<'s> Parser1<'s> {
     ) -> Result<Operand<'s>, ParseErr<'s>> {
         let try_operand = self.expect_token()?;
         let operand_typ = try_operand.typ.operand_type().ok_or(ParseErr {
-            typ: ParseErrTyp::InvalidOperand,
+            typ: ParseErrTyp::InvalidOperand {
+                found: try_operand.typ,
+            },
             span: try_operand.span,
         })?;
         if !last {
