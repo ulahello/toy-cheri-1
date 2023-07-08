@@ -1,5 +1,5 @@
 use fruticose_vm::int::UGran;
-use fruticose_vm::op::{OpKind, OperandType};
+use fruticose_vm::op::OpKind;
 use fruticose_vm::registers::Register;
 use fruticose_vm::syscall::SyscallKind;
 use unicode_segmentation::{GraphemeIndices, UnicodeSegmentation};
@@ -7,6 +7,7 @@ use unicode_segmentation::{GraphemeIndices, UnicodeSegmentation};
 use core::iter::Peekable;
 use core::num::{IntErrorKind, ParseIntError};
 
+use crate::parse1::OperandType;
 use crate::Span;
 
 pub const COMMENT: &str = ";";
@@ -26,9 +27,11 @@ pub enum TokenTyp {
     Register(Register),
     Syscall(SyscallKind),
     UnsignedInt(UGran), // TODO: support signed ints. also we should have a clear way to notate type of literal (eg, <number>_s for signed and <number>_u for unsigned)
+    Identifier,
 
     // if seen, immediately yield
     Comma,
+    Colon,
     Newline,
 
     Eof,
@@ -39,6 +42,7 @@ impl TokenTyp {
         match self {
             Self::Register(_) => Some(OperandType::Register),
             Self::Syscall(_) | Self::UnsignedInt(_) => Some(OperandType::Immediate),
+            Self::Identifier => Some(OperandType::Label),
             _ => None,
         }
     }
@@ -80,8 +84,9 @@ impl<'s> Lexer<'s> {
     #[must_use]
     fn check_no_ctx(chr: &'s str) -> Option<TokenTyp> {
         match chr {
-            "\n" => Some(TokenTyp::Newline),
             "," => Some(TokenTyp::Comma),
+            ":" => Some(TokenTyp::Colon),
+            "\n" => Some(TokenTyp::Newline),
             _ => None,
         }
     }
@@ -176,7 +181,7 @@ impl<'s> Lexer<'s> {
                     if *err.kind() == IntErrorKind::PosOverflow {
                         return Err(LexErrTyp::InvalidUnsignedInt(err));
                     }
-                    return Err(LexErrTyp::UnknownIdent);
+                    TokenTyp::Identifier
                 }
             },
         };

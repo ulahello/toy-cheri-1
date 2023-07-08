@@ -6,7 +6,7 @@ use core::fmt::{self, Write};
 use crate::abi::{Align, Layout, Ty};
 use crate::access::{MemAccess, MemAccessKind};
 use crate::exception::Exception;
-use crate::int::{UAddr, UGran, UGRAN_SIZE, UNINIT};
+use crate::int::{SAddr, UAddr, UGran, UGRAN_SIZE, UNINIT};
 use crate::mem::Memory;
 
 /* TODOOO: implement sealed capabilities using metadata */
@@ -25,6 +25,10 @@ impl Address {
 
     pub const fn sub(self, offset: UAddr) -> Self {
         Self(self.0.wrapping_sub(offset))
+    }
+
+    pub const fn offset(self, offset: SAddr) -> Self {
+        Self(self.0.wrapping_add_signed(offset))
     }
 
     pub const fn get(self) -> UAddr {

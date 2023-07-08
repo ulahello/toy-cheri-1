@@ -6,7 +6,7 @@ use crate::exception::Exception;
 use crate::mem::Memory;
 
 // TODO: document which operations operate on capabilities
-// TODO: document that branch instructions truncate to Address sized offsets
+// TODO: document that branch instructions truncate to SAddr offsets
 
 /* TODOOO: manipulation of cababilities */
 // informally based on riscv but this is not by definition so could change anytime
@@ -301,73 +301,6 @@ impl OpKind {
             Self::Syscall => 0,
         }
     }
-
-    pub const fn type_signature(self) -> [Option<OperandType>; 3] {
-        const fn sig<const N: usize>(
-            op: OpKind,
-            sig: [OperandType; N],
-        ) -> [Option<OperandType>; OpKind::MAX_OPERANDS] {
-            assert!(N <= OpKind::MAX_OPERANDS);
-            if sig.len() != op.operand_count() as _ {
-                panic!("signature must have correct operand cound");
-            }
-            let mut out = [None; 3];
-
-            let mut idx = 0;
-            while idx < sig.len() {
-                out[idx] = Some(sig[idx]);
-                idx += 1;
-            }
-            out
-        }
-
-        use OperandType::*;
-
-        match self {
-            Self::Nop => sig(self, []),
-            Self::LoadI => sig(self, [Register, Immediate]),
-            Self::LoadU8 => sig(self, [Register, Register]),
-            Self::LoadU16 => sig(self, [Register, Register]),
-            Self::LoadU32 => sig(self, [Register, Register]),
-            Self::LoadU64 => sig(self, [Register, Register]),
-            Self::LoadU128 => sig(self, [Register, Register]),
-            Self::LoadC => sig(self, [Register, Register]),
-            Self::Store8 => sig(self, [Register, Register]),
-            Self::Store16 => sig(self, [Register, Register]),
-            Self::Store32 => sig(self, [Register, Register]),
-            Self::Store64 => sig(self, [Register, Register]),
-            Self::Store128 => sig(self, [Register, Register]),
-            Self::StoreC => sig(self, [Register, Register]),
-            Self::AddI => sig(self, [Register, Register, Immediate]),
-            Self::Add => sig(self, [Register, Register, Register]),
-            Self::Sub => sig(self, [Register, Register, Register]),
-            Self::SltsI => sig(self, [Register, Register, Immediate]),
-            Self::SltuI => sig(self, [Register, Register, Immediate]),
-            Self::Slts => sig(self, [Register, Register, Register]),
-            Self::Sltu => sig(self, [Register, Register, Register]),
-            Self::XorI => sig(self, [Register, Register, Immediate]),
-            Self::Xor => sig(self, [Register, Register, Register]),
-            Self::OrI => sig(self, [Register, Register, Immediate]),
-            Self::Or => sig(self, [Register, Register, Register]),
-            Self::AndI => sig(self, [Register, Register, Immediate]),
-            Self::And => sig(self, [Register, Register, Register]),
-            Self::SllI => sig(self, [Register, Register, Immediate]),
-            Self::Sll => sig(self, [Register, Register, Register]),
-            Self::SrlI => sig(self, [Register, Register, Immediate]),
-            Self::Srl => sig(self, [Register, Register, Register]),
-            Self::SraI => sig(self, [Register, Register, Immediate]),
-            Self::Sra => sig(self, [Register, Register, Register]),
-            Self::Jal => sig(self, [Register, Immediate]),
-            Self::Jalr => sig(self, [Register, Register, Immediate]),
-            Self::Beq => sig(self, [Register, Register, Immediate]),
-            Self::Bne => sig(self, [Register, Register, Immediate]),
-            Self::Blts => sig(self, [Register, Register, Immediate]),
-            Self::Bges => sig(self, [Register, Register, Immediate]),
-            Self::Bltu => sig(self, [Register, Register, Immediate]),
-            Self::Bgeu => sig(self, [Register, Register, Immediate]),
-            Self::Syscall => sig(self, []),
-        }
-    }
 }
 
 impl Ty for OpKind {
@@ -430,22 +363,6 @@ impl fmt::Display for OpKind {
             Self::Bltu => "bltu",
             Self::Bgeu => "bgeu",
             Self::Syscall => "syscall",
-        };
-        f.write_str(s)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OperandType {
-    Register,
-    Immediate,
-}
-
-impl fmt::Display for OperandType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = match self {
-            Self::Register => "register",
-            Self::Immediate => "immediate",
         };
         f.write_str(s)
     }

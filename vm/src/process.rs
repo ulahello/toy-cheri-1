@@ -4,7 +4,7 @@ use crate::abi::Ty;
 use crate::access::MemAccessKind;
 use crate::capability::TaggedCapability;
 use crate::exception::Exception;
-use crate::int::{SGran, UAddr, UGran};
+use crate::int::{addr_sign, gran_sign, gran_unsign, UAddr};
 use crate::mem::Memory;
 use crate::op::{Op, OpKind};
 use crate::registers::Register;
@@ -154,8 +154,8 @@ impl Memory {
 
             OpKind::SltsI => {
                 let dst = reg(op.op1);
-                let op2 = sign(self.regs.read_data(reg(op.op2))?);
-                let op3 = sign(op.op3.to_ugran());
+                let op2 = gran_sign(self.regs.read_data(reg(op.op2))?);
+                let op3 = gran_sign(op.op3.to_ugran());
                 self.regs
                     .write_data(&mut self.tags, dst, (op2 < op3) as _)?;
             }
@@ -170,8 +170,8 @@ impl Memory {
 
             OpKind::Slts => {
                 let dst = reg(op.op1);
-                let op2 = sign(self.regs.read_data(reg(op.op2))?);
-                let op3 = sign(self.regs.read_data(reg(op.op3))?);
+                let op2 = gran_sign(self.regs.read_data(reg(op.op2))?);
+                let op3 = gran_sign(self.regs.read_data(reg(op.op3))?);
                 self.regs
                     .write_data(&mut self.tags, dst, (op2 < op3) as _)?;
             }
@@ -256,93 +256,95 @@ impl Memory {
 
             OpKind::SraI => {
                 let dst = reg(op.op1);
-                let val = sign(self.regs.read_data(reg(op.op2))?);
+                let val = gran_sign(self.regs.read_data(reg(op.op2))?);
                 let amount = op.op3.to_ugran();
                 self.regs
-                    .write_data(&mut self.tags, dst, unsign(val >> amount))?;
+                    .write_data(&mut self.tags, dst, gran_unsign(val >> amount))?;
             }
 
             OpKind::Sra => {
                 let dst = reg(op.op1);
-                let val = sign(self.regs.read_data(reg(op.op2))?);
+                let val = gran_sign(self.regs.read_data(reg(op.op2))?);
                 let amount = self.regs.read_data(reg(op.op3))?;
                 self.regs
-                    .write_data(&mut self.tags, dst, unsign(val >> amount))?;
+                    .write_data(&mut self.tags, dst, gran_unsign(val >> amount))?;
             }
 
             OpKind::Jal => {
                 let ra_dst = reg(op.op1);
-                let offset = op.op2.to_ugran() as UAddr;
+                let offset = addr_sign(op.op2.to_ugran() as UAddr);
                 self.regs.write(&mut self.tags, ra_dst, return_address)?;
-                return_address = pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
+                return_address =
+                    pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
             }
 
             OpKind::Jalr => {
                 let ra_dst = reg(op.op1);
-                let offset_reg = self.regs.read_data(reg(op.op2))? as UAddr;
-                let offset_imm = op.op3.to_ugran() as UAddr;
+                let offset_reg = addr_sign(self.regs.read_data(reg(op.op2))? as UAddr);
+                let offset_imm = addr_sign(op.op3.to_ugran() as UAddr);
                 let offset = offset_reg.wrapping_add(offset_imm);
                 self.regs.write(&mut self.tags, ra_dst, return_address)?;
-                return_address = pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
+                return_address =
+                    pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
             }
 
             OpKind::Beq => {
                 let cmp1 = self.regs.read_data(reg(op.op1))?;
                 let cmp2 = self.regs.read_data(reg(op.op2))?;
-                let offset = op.op3.to_ugran() as UAddr;
+                let offset = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 == cmp2 {
                     return_address =
-                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
+                        pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
                 }
             }
 
             OpKind::Bne => {
                 let cmp1 = self.regs.read_data(reg(op.op1))?;
                 let cmp2 = self.regs.read_data(reg(op.op2))?;
-                let offset = op.op3.to_ugran() as UAddr;
+                let offset = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 != cmp2 {
                     return_address =
-                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
+                        pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
                 }
             }
 
             OpKind::Blts => {
-                let cmp1 = sign(self.regs.read_data(reg(op.op1))?);
-                let cmp2 = sign(self.regs.read_data(reg(op.op2))?);
-                let offset = op.op3.to_ugran() as UAddr;
+                let cmp1 = gran_sign(self.regs.read_data(reg(op.op1))?);
+                let cmp2 = gran_sign(self.regs.read_data(reg(op.op2))?);
+                let offset = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 < cmp2 {
                     return_address =
-                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
+                        pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
                 }
             }
 
             OpKind::Bges => {
-                let cmp1 = sign(self.regs.read_data(reg(op.op1))?);
-                let cmp2 = sign(self.regs.read_data(reg(op.op2))?);
-                let offset = op.op3.to_ugran() as UAddr;
+                let cmp1 = gran_sign(self.regs.read_data(reg(op.op1))?);
+                let cmp2 = gran_sign(self.regs.read_data(reg(op.op2))?);
+                let offset = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 >= cmp2 {
                     return_address =
-                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
+                        pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
                 }
             }
 
             OpKind::Bltu => {
                 let cmp1 = self.regs.read_data(reg(op.op1))?;
                 let cmp2 = self.regs.read_data(reg(op.op2))?;
-                let offset = op.op3.to_ugran() as UAddr;
+                let offset = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 < cmp2 {
                     return_address =
-                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
+                        pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
                 }
             }
 
             OpKind::Bgeu => {
                 let cmp1 = self.regs.read_data(reg(op.op1))?;
                 let cmp2 = self.regs.read_data(reg(op.op2))?;
-                let offset = op.op3.to_ugran() as UAddr;
+                let offset = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 >= cmp2 {
                     return_address =
-                        pc.set_addr(pc.addr().add(offset.wrapping_mul(Op::LAYOUT.size)));
+                        pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
                 }
             }
 
@@ -368,12 +370,4 @@ impl Memory {
 
 fn reg(tcap: TaggedCapability) -> u8 {
     tcap.capability().to_ugran() as u8
-}
-
-fn sign(u: UGran) -> SGran {
-    SGran::from_le_bytes(u.to_le_bytes())
-}
-
-fn unsign(s: SGran) -> UGran {
-    UGran::from_le_bytes(s.to_le_bytes())
 }

@@ -14,8 +14,9 @@ use std::io::{stderr, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use fruticose_asm::lex::LexErrTyp;
-use fruticose_asm::parse::{ParseErr, ParseErrTyp, Parser};
+use fruticose_asm::lex::{LexErrTyp, TokenTyp};
+use fruticose_asm::parse1::{ParseErr, ParseErrTyp, TokenClass};
+use fruticose_asm::parse2::Parser2;
 use fruticose_vm::exception::Exception;
 use fruticose_vm::int::UAddr;
 use fruticose_vm::mem::Memory;
@@ -87,7 +88,7 @@ fn assemble_init(init: &Path) -> anyhow::Result<Vec<Op>> {
     let init_src = fs::read_to_string(init).context("failed to read init program source")?;
 
     tracing::trace!("assembling init program");
-    let parser = Parser::new(&init_src);
+    let parser = Parser2::new(&init_src);
     let mut ops = Vec::new();
     for try_op in parser {
         match try_op {
@@ -184,7 +185,21 @@ fn pretty_print_parse_err<W: Write>(
         }
         ParseErrTyp::InvalidOperand => write!(f, "invalid operand")?,
         ParseErrTyp::OperandTypeMismatch { expected, found } => {
-            write!(f, "operand mismatch: expected {expected} but found {found}")?;
+            write!(
+                f,
+                "operand mismatch: expected {expected}, but found {found}"
+            )?;
+        }
+        ParseErrTyp::InvalidStmtStart { found } => write!(
+            f,
+            "expected statement start '{}' or '{}', but found '{found}'",
+            TokenClass::Op,
+            TokenTyp::Identifier
+        )?,
+        ParseErrTyp::LabelRedef { first_def: _ } => write!(f, "labels cannot be redefined")?, // TODO: show where first defined
+        ParseErrTyp::LabelUndef => write!(f, "undefined label")?,
+        ParseErrTyp::LabelOffsetOverflow => {
+            write!(f, "overflow occured while computing label offset")?;
         }
     }
     writeln!(f)?;
@@ -197,7 +212,6 @@ fn pretty_print_parse_err<W: Write>(
     let in_span_len = UnicodeWidthStr::width(in_span).max(1);
 
     let line = span.line + 1;
-    // TODO: unwrap on None possible
     let col = {
         let graphs = || UnicodeSegmentation::grapheme_indices(span.get_line(), true);
         if let Some(col) = graphs().position(|(idx, _)| idx == span.col_idx) {

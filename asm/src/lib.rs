@@ -1,6 +1,7 @@
 mod fmt;
 pub mod lex;
-pub mod parse;
+pub mod parse1;
+pub mod parse2;
 
 #[cfg(test)]
 mod tests;
