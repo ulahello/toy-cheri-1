@@ -21,7 +21,7 @@ pub fn by_bounds(mem: &mut Memory, start: Address, endb: Address) -> Result<(), 
                     let gran = TagController::idx_to_gran(idx)
                         .expect("enumerated tag controller index is valid");
                     /* NOTE: it's okay to create magic tcap here because
-                     * revoking capabilities is conceptually a priveleged
+                     * revoking capabilities is conceptually a privileged
                      * process */
                     mem.read(root.set_addr(gran.addr()))?
                 }
