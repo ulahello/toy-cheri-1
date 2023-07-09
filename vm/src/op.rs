@@ -9,8 +9,10 @@ use crate::mem::Memory;
 // TODO: document that branch instructions truncate to SAddr offsets
 
 // informally based on riscv but this is not by definition so could change anytime
+#[deny(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
+/// Enumeration over all operations.
 pub enum OpKind {
     /// No-op.
     Nop = 0,
