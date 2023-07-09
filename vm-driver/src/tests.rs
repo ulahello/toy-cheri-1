@@ -8,6 +8,7 @@ mod exec {
     use fruticose_vm::registers::Register;
 
     const ADD: &str = include_str!("../../asm/examples/add.asm");
+    const CMP: &str = include_str!("../../asm/examples/cmp.asm");
 
     fn assemble(src: &str) -> Result<Vec<Op>, ParseErr> {
         let ops = Parser2::new(src)
@@ -43,5 +44,16 @@ mod exec {
         expect_in_reg(&mut mem, Register::T1, TaggedCapability::from_ugran(23));
         expect_in_reg(&mut mem, Register::T2, TaggedCapability::from_ugran(47));
         expect_in_reg(&mut mem, Register::T0, TaggedCapability::from_ugran(71));
+    }
+
+    #[test]
+    fn cmp() {
+        let ops = assemble(CMP).unwrap();
+        let mut mem = Memory::new(64, ops.iter()).unwrap();
+        drop(ops);
+        exec(&mut mem).unwrap();
+        expect_in_reg(&mut mem, Register::T1, TaggedCapability::from_ugran(47));
+        expect_in_reg(&mut mem, Register::T2, TaggedCapability::from_ugran(48));
+        expect_in_reg(&mut mem, Register::T0, TaggedCapability::from_ugran(1));
     }
 }
