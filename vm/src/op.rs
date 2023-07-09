@@ -8,13 +8,42 @@ use crate::mem::Memory;
 // TODO: document which operations operate on capabilities
 // TODO: document that branch instructions truncate to SAddr offsets
 
-/* TODOOO: manipulation of cababilities */
 // informally based on riscv but this is not by definition so could change anytime
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum OpKind {
     /// No-op.
     Nop = 0,
+
+    /// Load the address value from the capability at register `op2` and store
+    /// it in register `op1`.
+    CGetAddr,
+
+    /// Assign the address value at register `op2` to the capability in register
+    /// `op1`.
+    CSetAddr,
+
+    /// Load the start and end bound values from the capability at register
+    /// `op3` and store them in registers `op1` and `op2`, respectively.
+    CGetBound,
+
+    /// Assign the start and end bound values at registers `op2` and `op3`,
+    /// respectively, to the capability in register `op1`. If the new bounds are
+    /// wider than the old bounds, the capability will be invalidated.
+    CSetBound,
+
+    /// Load the permissions bit field from the capability at register `op2` and
+    /// store it in register `op1`.
+    CGetPerm,
+
+    /// Assign the permissions bit field at register `op2` to the capability in
+    /// register `op1`. If the new permissions are more permissive than the old
+    /// permissions, the capability will be invalidated.
+    CSetPerm,
+
+    /// Place the value 1 in register `op1` if the capability at register `op2`
+    /// is valid, else place 0.
+    CGetValid,
 
     /// Load immediate value `op2` into register `op1`.
     LoadI,
@@ -210,47 +239,54 @@ impl OpKind {
     pub const fn from_byte(byte: u8) -> Result<Self, Exception> {
         match byte {
             0 => Ok(Self::Nop),
-            1 => Ok(Self::LoadI),
-            2 => Ok(Self::LoadU8),
-            3 => Ok(Self::LoadU16),
-            4 => Ok(Self::LoadU32),
-            5 => Ok(Self::LoadU64),
-            6 => Ok(Self::LoadU128),
-            7 => Ok(Self::LoadC),
-            8 => Ok(Self::Store8),
-            9 => Ok(Self::Store16),
-            10 => Ok(Self::Store32),
-            11 => Ok(Self::Store64),
-            12 => Ok(Self::Store128),
-            13 => Ok(Self::StoreC),
-            14 => Ok(Self::AddI),
-            15 => Ok(Self::Add),
-            16 => Ok(Self::Sub),
-            17 => Ok(Self::SltsI),
-            18 => Ok(Self::SltuI),
-            19 => Ok(Self::Slts),
-            20 => Ok(Self::Sltu),
-            21 => Ok(Self::XorI),
-            22 => Ok(Self::Xor),
-            23 => Ok(Self::OrI),
-            24 => Ok(Self::Or),
-            25 => Ok(Self::AndI),
-            26 => Ok(Self::And),
-            27 => Ok(Self::SllI),
-            28 => Ok(Self::Sll),
-            29 => Ok(Self::SrlI),
-            30 => Ok(Self::Srl),
-            31 => Ok(Self::SraI),
-            32 => Ok(Self::Sra),
-            33 => Ok(Self::Jal),
-            34 => Ok(Self::Jalr),
-            35 => Ok(Self::Beq),
-            36 => Ok(Self::Bne),
-            37 => Ok(Self::Blts),
-            38 => Ok(Self::Bges),
-            39 => Ok(Self::Bltu),
-            40 => Ok(Self::Bgeu),
-            41 => Ok(Self::Syscall),
+            1 => Ok(Self::CGetAddr),
+            2 => Ok(Self::CSetAddr),
+            3 => Ok(Self::CGetBound),
+            4 => Ok(Self::CSetBound),
+            5 => Ok(Self::CGetPerm),
+            6 => Ok(Self::CSetPerm),
+            7 => Ok(Self::CGetValid),
+            8 => Ok(Self::LoadI),
+            9 => Ok(Self::LoadU8),
+            10 => Ok(Self::LoadU16),
+            11 => Ok(Self::LoadU32),
+            12 => Ok(Self::LoadU64),
+            13 => Ok(Self::LoadU128),
+            14 => Ok(Self::LoadC),
+            15 => Ok(Self::Store8),
+            16 => Ok(Self::Store16),
+            17 => Ok(Self::Store32),
+            18 => Ok(Self::Store64),
+            19 => Ok(Self::Store128),
+            20 => Ok(Self::StoreC),
+            21 => Ok(Self::AddI),
+            22 => Ok(Self::Add),
+            23 => Ok(Self::Sub),
+            24 => Ok(Self::SltsI),
+            25 => Ok(Self::SltuI),
+            26 => Ok(Self::Slts),
+            27 => Ok(Self::Sltu),
+            28 => Ok(Self::XorI),
+            29 => Ok(Self::Xor),
+            30 => Ok(Self::OrI),
+            31 => Ok(Self::Or),
+            32 => Ok(Self::AndI),
+            33 => Ok(Self::And),
+            34 => Ok(Self::SllI),
+            35 => Ok(Self::Sll),
+            36 => Ok(Self::SrlI),
+            37 => Ok(Self::Srl),
+            38 => Ok(Self::SraI),
+            39 => Ok(Self::Sra),
+            40 => Ok(Self::Jal),
+            41 => Ok(Self::Jalr),
+            42 => Ok(Self::Beq),
+            43 => Ok(Self::Bne),
+            44 => Ok(Self::Blts),
+            45 => Ok(Self::Bges),
+            46 => Ok(Self::Bltu),
+            47 => Ok(Self::Bgeu),
+            48 => Ok(Self::Syscall),
             _ => Err(Exception::InvalidOpKind { byte }),
         }
     }
@@ -258,6 +294,13 @@ impl OpKind {
     pub const fn operand_count(self) -> u8 {
         match self {
             Self::Nop => 0,
+            Self::CGetAddr => 2,
+            Self::CSetAddr => 2,
+            Self::CGetBound => 3,
+            Self::CSetBound => 3,
+            Self::CGetPerm => 2,
+            Self::CSetPerm => 2,
+            Self::CGetValid => 2,
             Self::LoadI => 2,
             Self::LoadU8 => 2,
             Self::LoadU16 => 2,
@@ -322,6 +365,13 @@ impl fmt::Display for OpKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             Self::Nop => "nop",
+            Self::CGetAddr => "cgetaddr",
+            Self::CSetAddr => "csetaddr",
+            Self::CGetBound => "cgetbound",
+            Self::CSetBound => "csetbound",
+            Self::CGetPerm => "cgetperm",
+            Self::CSetPerm => "csetperm",
+            Self::CGetValid => "cgetvalid",
             Self::LoadI => "loadi",
             Self::LoadU8 => "loadu8",
             Self::LoadU16 => "loadu16",

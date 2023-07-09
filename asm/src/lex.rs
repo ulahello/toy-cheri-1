@@ -95,6 +95,13 @@ impl<'s> Lexer<'s> {
         let typ = match span {
             // operations
             "nop" => TokenTyp::Op(OpKind::Nop),
+            "cgetaddr" => TokenTyp::Op(OpKind::CGetAddr),
+            "csetaddr" => TokenTyp::Op(OpKind::CSetAddr),
+            "cgetbound" => TokenTyp::Op(OpKind::CGetBound),
+            "csetbound" => TokenTyp::Op(OpKind::CSetBound),
+            "cgetperm" => TokenTyp::Op(OpKind::CGetPerm),
+            "csetperm" => TokenTyp::Op(OpKind::CSetPerm),
+            "cgetvalid" => TokenTyp::Op(OpKind::CGetValid),
             "loadi" => TokenTyp::Op(OpKind::LoadI),
             "loadu8" => TokenTyp::Op(OpKind::LoadU8),
             "loadu16" => TokenTyp::Op(OpKind::LoadU16),

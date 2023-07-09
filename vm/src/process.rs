@@ -2,7 +2,7 @@ use tracing::{span, Level};
 
 use crate::abi::Ty;
 use crate::access::MemAccessKind;
-use crate::capability::TaggedCapability;
+use crate::capability::{Address, Permissions, TaggedCapability};
 use crate::exception::Exception;
 use crate::int::{addr_sign, gran_sign, gran_unsign, UAddr};
 use crate::mem::Memory;
@@ -37,6 +37,66 @@ impl Memory {
 
         match op.kind {
             OpKind::Nop => (),
+
+            OpKind::CGetAddr => {
+                let dst = reg(op.op1);
+                let tcap = self.regs.read(&self.tags, reg(op.op2))?;
+                let addr = tcap.addr();
+                self.regs
+                    .write_data(&mut self.tags, dst, addr.get().into())?;
+            }
+
+            OpKind::CSetAddr => {
+                let tcap_reg = reg(op.op1);
+                let mut tcap = self.regs.read(&self.tags, tcap_reg)?;
+                let addr = self.regs.read_data(reg(op.op2))?;
+                tcap = tcap.set_addr(Address(addr as UAddr));
+                self.regs.write(&mut self.tags, tcap_reg, tcap)?;
+            }
+
+            OpKind::CGetBound => {
+                let start_dst = reg(op.op1);
+                let endb_dst = reg(op.op2);
+                let tcap = self.regs.read(&self.tags, reg(op.op3))?;
+                let start = tcap.start();
+                let endb = tcap.endb();
+                self.regs
+                    .write_data(&mut self.tags, start_dst, start.get().into())?;
+                self.regs
+                    .write_data(&mut self.tags, endb_dst, endb.get().into())?;
+            }
+
+            OpKind::CSetBound => {
+                let tcap_reg = reg(op.op1);
+                let mut tcap = self.regs.read(&self.tags, tcap_reg)?;
+                let start = self.regs.read_data(reg(op.op2))?;
+                let endb = self.regs.read_data(reg(op.op3))?;
+                tcap = tcap.set_bounds(Address(start as UAddr), Address(endb as UAddr));
+                self.regs.write(&mut self.tags, tcap_reg, tcap)?;
+            }
+
+            OpKind::CGetPerm => {
+                let dst = reg(op.op1);
+                let tcap = self.regs.read(&self.tags, reg(op.op2))?;
+                let perms = tcap.perms();
+                self.regs
+                    .write_data(&mut self.tags, dst, perms.bits().into())?;
+            }
+
+            OpKind::CSetPerm => {
+                let tcap_reg = reg(op.op1);
+                let mut tcap = self.regs.read(&self.tags, tcap_reg)?;
+                let perms = self.regs.read_data(reg(op.op2))?;
+                tcap = tcap.set_perms(Permissions::from_bits_truncate(perms as u8));
+                self.regs.write(&mut self.tags, tcap_reg, tcap)?;
+            }
+
+            OpKind::CGetValid => {
+                let dst = reg(op.op1);
+                let tcap = self.regs.read(&self.tags, reg(op.op2))?;
+                self.regs
+                    .write_data(&mut self.tags, dst, tcap.is_valid() as _)?;
+            }
 
             OpKind::LoadI => {
                 let dst = reg(op.op1);
