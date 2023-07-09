@@ -36,7 +36,7 @@ impl<'s> Span<'s> {
     pub fn get_line(&self) -> &'s str {
         let start = &self.src[self.line_start..];
         if let Some(len) = start.as_bytes().iter().position(|byte| *byte == b'\n') {
-            &start[..len]
+            &start[..=len]
         } else {
             start
         }

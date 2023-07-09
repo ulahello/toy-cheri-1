@@ -214,7 +214,7 @@ fn pretty_print_parse_err<W: Write>(
     }
     writeln!(f)?;
 
-    let mut diag = Diagnostic::new(
+    let diag = Diagnostic::new(
         span,
         src_path,
         text,
@@ -268,10 +268,14 @@ impl<'s, 'p> Diagnostic<'s, 'p> {
         let err_body = self.err_body;
         let err_underline = self.err_underline;
 
-        // TODO: out of bounds possible
         let pre_span = &span.get_line()[..span.col_idx];
-        let in_span = span.get();
-        let post_span = &span.get_line()[span.col_idx..][span.len..];
+        let mut in_span = span.get();
+        let mut post_span = &span.get_line()[span.col_idx..][span.len..];
+        if post_span.is_empty() {
+            in_span = in_span.trim_end();
+        } else {
+            post_span = post_span.trim_end();
+        }
         let pre_span_len = UnicodeWidthStr::width(pre_span);
         let in_span_len = UnicodeWidthStr::width(in_span).max(1);
 
