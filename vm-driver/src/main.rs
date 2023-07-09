@@ -9,14 +9,15 @@ use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
 use core::num::IntErrorKind;
-use std::fs;
 use std::io::{stderr, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::{fs, io};
 
 use fruticose_asm::lex::{LexErrTyp, TokenTyp};
 use fruticose_asm::parse1::{ParseErr, ParseErrTyp, TokenClass};
 use fruticose_asm::parse2::Parser2;
+use fruticose_asm::Span;
 use fruticose_vm::exception::Exception;
 use fruticose_vm::int::UAddr;
 use fruticose_vm::mem::Memory;
@@ -213,46 +214,100 @@ fn pretty_print_parse_err<W: Write>(
     }
     writeln!(f)?;
 
-    // TODO: out of bounds possible
-    let pre_span = &span.get_line()[..span.col_idx];
-    let in_span = span.get();
-    let post_span = &span.get_line()[span.col_idx..][span.len..];
-    let pre_span_len = UnicodeWidthStr::width(pre_span);
-    let in_span_len = UnicodeWidthStr::width(in_span).max(1);
+    let mut diag = Diagnostic::new(
+        span,
+        src_path,
+        text,
+        symbols,
+        err_span,
+        err_body,
+        err_underline,
+    );
+    diag.write(&mut f)?;
 
-    let line = span.line + 1;
-    let col = {
-        let graphs = || UnicodeSegmentation::grapheme_indices(span.get_line(), true);
-        if let Some(col) = graphs().position(|(idx, _)| idx == span.col_idx) {
-            col + 1
-        } else {
-            // eof isnt a real character! but its still loved
-            graphs().map(|(idx, _)| idx).last().unwrap_or(0)
+    f.flush()?;
+    Ok(())
+}
+
+struct Diagnostic<'s, 'p> {
+    span: Span<'s>,
+    src_path: &'p Path,
+    text: Style,
+    symbols: Style,
+    err_span: Style,
+    err_body: Style,
+    err_underline: Style,
+}
+
+impl<'s, 'p> Diagnostic<'s, 'p> {
+    pub fn new(
+        span: Span<'s>,
+        src_path: &'p Path,
+        text: Style,
+        symbols: Style,
+        err_span: Style,
+        err_body: Style,
+        err_underline: Style,
+    ) -> Self {
+        Self {
+            span,
+            src_path,
+            text,
+            symbols,
+            err_span,
+            err_body,
+            err_underline,
         }
-    };
+    }
 
-    let line_fmt_width = line.ilog10() as usize + 1;
-    let side_pad = 1;
-    let line_pad = side_pad + line_fmt_width + side_pad;
-    // TODO: allocating strings here is silly
-    let line_padding = " ".repeat(line_pad);
-    let side_padding = " ".repeat(side_pad);
+    pub fn write<W: Write>(&self, mut f: W) -> io::Result<()> {
+        let span = self.span;
+        let text = self.text;
+        let symbols = self.symbols;
+        let err_span = self.err_span;
+        let err_body = self.err_body;
+        let err_underline = self.err_underline;
 
-    writeln!(
-        f,
-        "{side_padding}{}@{} {src_path}:{line}:{col}",
-        err_body.infix(symbols),
-        symbols.infix(text),
-        src_path = src_path.display(),
-    )?;
+        // TODO: out of bounds possible
+        let pre_span = &span.get_line()[..span.col_idx];
+        let in_span = span.get();
+        let post_span = &span.get_line()[span.col_idx..][span.len..];
+        let pre_span_len = UnicodeWidthStr::width(pre_span);
+        let in_span_len = UnicodeWidthStr::width(in_span).max(1);
 
-    writeln!(
-        f,
-        "{line_padding}{}|{}",
-        text.infix(symbols),
-        symbols.infix(text)
-    )?;
-    writeln!(
+        let line = span.line + 1;
+        let col = {
+            let graphs = || UnicodeSegmentation::grapheme_indices(span.get_line(), true);
+            if let Some(col) = graphs().position(|(idx, _)| idx == span.col_idx) {
+                col + 1
+            } else {
+                // eof isnt a real character! but its still loved
+                graphs().map(|(idx, _)| idx).last().unwrap_or(0)
+            }
+        };
+
+        let line_fmt_width = line.ilog10() as usize + 1;
+        let side_pad = 1;
+        let line_pad = side_pad + line_fmt_width + side_pad;
+        // TODO: allocating strings here is silly
+        let line_padding = " ".repeat(line_pad);
+        let side_padding = " ".repeat(side_pad);
+
+        writeln!(
+            f,
+            "{side_padding}{}@{} {src_path}:{line}:{col}",
+            err_body.infix(symbols),
+            symbols.infix(text),
+            src_path = self.src_path.display(),
+        )?;
+
+        writeln!(
+            f,
+            "{line_padding}{}|{}",
+            text.infix(symbols),
+            symbols.infix(text)
+        )?;
+        writeln!(
         f,
         "{side_padding}{}{line}{}{side_padding}{}|{}{side_padding}{pre_span}{}{in_span}{}{post_span}",
         text.infix(symbols),
@@ -262,17 +317,17 @@ fn pretty_print_parse_err<W: Write>(
         text.infix(err_span),
         err_span.infix(text),
     )?;
-    writeln!(
-        f,
-        "{line_padding}{}|{}{side_padding}{skip_pre}{}{fake_underline}{}",
-        text.infix(symbols),
-        symbols.infix(text),
-        text.infix(err_underline),
-        err_underline.suffix(),
-        skip_pre = " ".repeat(pre_span_len),
-        fake_underline = "^".repeat(in_span_len),
-    )?;
+        writeln!(
+            f,
+            "{line_padding}{}|{}{side_padding}{skip_pre}{}{fake_underline}{}",
+            text.infix(symbols),
+            symbols.infix(text),
+            text.infix(err_underline),
+            err_underline.suffix(),
+            skip_pre = " ".repeat(pre_span_len),
+            fake_underline = "^".repeat(in_span_len),
+        )?;
 
-    f.flush()?;
-    Ok(())
+        Ok(())
+    }
 }
