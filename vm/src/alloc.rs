@@ -166,6 +166,8 @@ impl Ty for Header {
     }
 }
 
+// TODO: better handling of zero sized allocations
+
 pub fn init(
     strat: Strategy,
     flags: InitFlags,
