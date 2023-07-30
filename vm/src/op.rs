@@ -50,24 +50,23 @@ pub enum OpKind {
     /// Load immediate value `op2` into register `op1`.
     LoadI,
 
-    /// Load 8-bit value from capability at register `op2` and zero-extend
-    /// before storing it in register `op1`.
+    /// Load 8-bit value from register `op2` and zero-extend before storing it
+    /// in register `op1`.
     LoadU8,
 
-    /// Load 16-bit value from capability at register `op2` and zero-extend
-    /// before storing it in register `op1`.
+    /// Load 16-bit value from register `op2` and zero-extend before storing it
+    /// in register `op1`.
     LoadU16,
 
-    /// Load 32-bit value from capability at register `op2` and zero-extend
-    /// before storing it in register `op1`.
+    /// Load 32-bit value from register `op2` and zero-extend before storing it
+    /// in register `op1`.
     LoadU32,
 
-    /// Load 64-bit value from capability at register `op2` and zero-extend
-    /// before storing it in register `op1`.
+    /// Load 64-bit value from register `op2` and zero-extend before storing it
+    /// in register `op1`.
     LoadU64,
 
-    /// Load 128-bit value from capability at register `op2` into register
-    /// `op1`.
+    /// Load 128-bit value from register `op2` into register `op1`.
     LoadU128,
 
     /// Load capability from capability at register `op2` into register `op1`.
