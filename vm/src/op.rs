@@ -227,7 +227,7 @@ pub enum OpKind {
     Bgeu,
 
     /// Perform a system call. The [kind](crate::syscall::SyscallKind) is
-    /// determined by the value in register `a0`.
+    /// determined by the value in register `a2`.
     Syscall,
 }
 

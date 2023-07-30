@@ -2,6 +2,7 @@ use core::fmt;
 
 use crate::access::{MemAccess, RegAccess};
 use crate::alloc::{AllocErr, AllocErrKind};
+use crate::int::UAddr;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Exception {
@@ -12,6 +13,8 @@ pub enum Exception {
     InvalidAllocStrategy { byte: u8 },
 
     InvalidAllocInitFlags { flags: u8 },
+
+    InvalidAlign { align: UAddr },
 
     InvalidMemAccess { access: MemAccess },
 
@@ -39,6 +42,10 @@ impl fmt::Display for Exception {
 
             Self::InvalidAllocInitFlags { flags } => {
                 write!(f, "invalid allocator init flags 0b{flags:0b}")?;
+            }
+
+            Self::InvalidAlign { align } => {
+                write!(f, "invalid alignment {align}: must be a power of two")?;
             }
 
             Self::InvalidMemAccess { access } => {

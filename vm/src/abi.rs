@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::capability::TaggedCapability;
 use crate::exception::Exception;
-use crate::int::UAddr;
+use crate::int::{UAddr, UGran, UADDR_SIZE};
 use crate::mem::Memory;
 
 // TODO: continue to reduce boilerplate implementing Ty
@@ -33,6 +33,18 @@ pub struct Layout {
     pub align: Align,
 }
 
+impl Layout {
+    pub fn from_ugran(gran: UGran) -> Result<Self, Exception> {
+        let size = UAddr::from_le_bytes(gran.to_le_bytes()[..UADDR_SIZE as _].try_into().unwrap());
+        let align = UAddr::from_le_bytes(gran.to_le_bytes()[UADDR_SIZE as _..].try_into().unwrap());
+        if let Some(align) = Align::new(align) {
+            Ok(Self { size, align })
+        } else {
+            Err(Exception::InvalidAlign { align })
+        }
+    }
+}
+
 impl fmt::Display for Align {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.get())
@@ -46,6 +58,11 @@ pub trait Ty: Copy + Sized + fmt::Debug {
     fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception>;
 
     fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception>;
+
+    /* TODOO: the same logic and field offsets apply to memory as they do
+     * registers. registers are just 16 byte spans of memory anyway. this trait
+     * needs a way to read/write to registers but i don't want to add to the
+     * boilerplate. one way to do this is make these methods abstract over &[u8] */
 }
 
 pub struct Fields<'a> {

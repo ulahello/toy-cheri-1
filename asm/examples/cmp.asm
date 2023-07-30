@@ -12,5 +12,5 @@ cmp_false:
 	jal zero, exit
 
 exit:
-	loadi a0, SYS_EXIT
+	loadi a2, SYS_EXIT
 	syscall

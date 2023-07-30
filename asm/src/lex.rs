@@ -180,6 +180,12 @@ impl<'s> Lexer<'s> {
 
             // syscalls
             "SYS_EXIT" => TokenTyp::Syscall(SyscallKind::Exit),
+            "SYS_ALLOC_INIT" => TokenTyp::Syscall(SyscallKind::AllocInit),
+            "SYS_ALLOC_DEINIT" => TokenTyp::Syscall(SyscallKind::AllocDeInit),
+            "SYS_ALLOC_ALLOC" => TokenTyp::Syscall(SyscallKind::AllocAlloc),
+            "SYS_ALLOC_FREE" => TokenTyp::Syscall(SyscallKind::AllocFree),
+            "SYS_ALLOC_FREE_ALL" => TokenTyp::Syscall(SyscallKind::AllocFreeAll),
+            "SYS_ALLOC_STAT" => TokenTyp::Syscall(SyscallKind::AllocStat),
 
             _ => match span.parse::<UGran>() {
                 Ok(int) => TokenTyp::UnsignedInt(int),

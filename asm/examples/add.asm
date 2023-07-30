@@ -5,5 +5,5 @@ add t0, t1, t2
 addi t0, t0, 1
 ; t0 contains 71
 
-loadi a0, SYS_EXIT
+loadi a2, SYS_EXIT
 syscall

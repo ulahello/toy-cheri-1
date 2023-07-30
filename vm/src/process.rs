@@ -1,10 +1,11 @@
 use tracing::{span, Level};
 
-use crate::abi::Ty;
+use crate::abi::{Layout, Ty};
 use crate::access::MemAccessKind;
+use crate::alloc::{self, InitFlags, Strategy};
 use crate::capability::{Address, Permissions, TaggedCapability};
 use crate::exception::Exception;
-use crate::int::{addr_sign, gran_sign, gran_unsign, UAddr};
+use crate::int::{addr_sign, gran_sign, gran_unsign, UAddr, UGran};
 use crate::mem::Memory;
 use crate::op::{Op, OpKind};
 use crate::registers::Register;
@@ -409,11 +410,68 @@ impl Memory {
             }
 
             OpKind::Syscall => {
-                let kind = self.regs.read(&self.tags, Register::A0 as _)?;
-                let kind = SyscallKind::from_byte(kind.to_ugran() as u8)?;
+                let kind = self.regs.read_data(Register::A2 as _)?;
+                let kind = SyscallKind::from_byte(kind as u8)?;
                 tracing::trace!("syscall {kind:?}");
                 match kind {
                     SyscallKind::Exit => return Err(Exception::ProcessExit),
+
+                    SyscallKind::AllocInit => {
+                        let strategy =
+                            Strategy::from_byte(self.regs.read_data(Register::A3 as _)? as u8)?;
+                        let flags = InitFlags::from_bits_truncate(
+                            self.regs.read_data(Register::A4 as _)? as u8,
+                        );
+                        let region = self.regs.read(&self.tags, Register::A5 as _)?;
+                        let ator = alloc::init(strategy, flags, region, self)?;
+                        self.regs.write(&mut self.tags, Register::A0 as _, ator)?;
+                    }
+
+                    SyscallKind::AllocDeInit => {
+                        let ator = self.regs.read(&self.tags, Register::A3 as _)?;
+                        let region = alloc::deinit(ator, self)?;
+                        self.regs.write(&mut self.tags, Register::A0 as _, region)?;
+                    }
+
+                    SyscallKind::AllocAlloc => {
+                        let ator = self.regs.read(&self.tags, Register::A3 as _)?;
+                        let layout = Layout::from_ugran(self.regs.read_data(Register::A4 as _)?)?;
+                        let ation = alloc::alloc(ator, layout, self)?;
+                        self.regs.write(&mut self.tags, Register::A0 as _, ation)?;
+                    }
+
+                    SyscallKind::AllocFree => {
+                        let ator = self.regs.read(&self.tags, Register::A3 as _)?;
+                        let ation = self.regs.read(&self.tags, Register::A4 as _)?;
+                        alloc::free(ator, ation, self)?;
+                    }
+
+                    SyscallKind::AllocFreeAll => {
+                        let ator = self.regs.read(&self.tags, Register::A3 as _)?;
+                        alloc::free_all(ator, self)?;
+                    }
+
+                    SyscallKind::AllocStat => {
+                        let ator = self.regs.read(&self.tags, Register::A3 as _)?;
+                        let stats_t = alloc::stat(ator, self)?;
+                        /* TODOO: see Ty trait todo for read/write to registers */
+                        let mut stats = (0 as UGran).to_le_bytes();
+                        let mut cur = 0;
+                        stats[cur..][..Strategy::LAYOUT.size as usize]
+                            .copy_from_slice(&stats_t.strategy.to_byte().to_le_bytes());
+                        cur += Strategy::LAYOUT.size as usize;
+                        stats[cur..][..InitFlags::LAYOUT.size as usize]
+                            .copy_from_slice(&stats_t.flags.bits().to_le_bytes());
+                        cur += InitFlags::LAYOUT.size as usize;
+                        stats[cur..][..UAddr::LAYOUT.size as usize]
+                            .copy_from_slice(&stats_t.bytes_free.to_le_bytes());
+                        //cur += UAddr::LAYOUT.size as usize;
+                        self.regs.write_data(
+                            &mut self.tags,
+                            Register::A0 as _,
+                            UGran::from_le_bytes(stats),
+                        )?;
+                    }
                 }
             }
         }
