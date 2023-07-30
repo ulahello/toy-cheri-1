@@ -23,7 +23,6 @@ impl Registers {
     pub fn read(&self, tags: &TagController, reg: u8) -> Result<TaggedCapability, Exception> {
         let gran = self.read_data(reg)?;
         let valid = if reg == Register::Zero as _ {
-            // TODO: if true false?
             false
         } else {
             tags.read_reg(reg).unwrap()
