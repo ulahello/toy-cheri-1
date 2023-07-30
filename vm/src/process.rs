@@ -107,44 +107,44 @@ impl Memory {
 
             OpKind::LoadU8 => {
                 let dst = reg(op.op1);
-                let src = op.op2;
-                let val: u8 = self.read(src)?;
+                let src = reg(op.op2);
+                let val = self.regs.read_data(src)? as u8;
                 self.regs.write_data(&mut self.tags, dst, val.into())?;
             }
 
             OpKind::LoadU16 => {
                 let dst = reg(op.op1);
-                let src = op.op2;
-                let val: u16 = self.read(src)?;
+                let src = reg(op.op2);
+                let val = self.regs.read_data(src)? as u16;
                 self.regs.write_data(&mut self.tags, dst, val.into())?;
             }
 
             OpKind::LoadU32 => {
                 let dst = reg(op.op1);
-                let src = op.op2;
-                let val: u32 = self.read(src)?;
+                let src = reg(op.op2);
+                let val = self.regs.read_data(src)? as u32;
                 self.regs.write_data(&mut self.tags, dst, val.into())?;
             }
 
             OpKind::LoadU64 => {
                 let dst = reg(op.op1);
-                let src = op.op2;
-                let val: u64 = self.read(src)?;
+                let src = reg(op.op2);
+                let val = self.regs.read_data(src)? as u64;
                 self.regs.write_data(&mut self.tags, dst, val.into())?;
             }
 
             OpKind::LoadU128 => {
                 let dst = reg(op.op1);
-                let src = op.op2;
-                let val: u128 = self.read(src)?;
+                let src = reg(op.op2);
+                let val = self.regs.read_data(src)?;
                 self.regs.write_data(&mut self.tags, dst, val)?;
             }
 
             OpKind::LoadC => {
                 let dst = reg(op.op1);
-                let src = op.op2;
-                let cap: TaggedCapability = self.read(src)?;
-                self.regs.write(&mut self.tags, dst, cap)?;
+                let src = reg(op.op2);
+                let val = self.regs.read(&self.tags, src)?;
+                self.regs.write(&mut self.tags, dst, val)?;
             }
 
             OpKind::Store8 => {
