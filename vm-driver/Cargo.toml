@@ -9,7 +9,7 @@ name = "fruticose"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1.0.71"
+anyhow = "1.0.72"
 argh = "0.1.10"
 nu-ansi-term = "0.48.0"
 tracing = "0.1.37"
