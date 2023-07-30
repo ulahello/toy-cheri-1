@@ -1,4 +1,5 @@
 #![feature(int_roundings, const_option)]
+#![deny(elided_lifetimes_in_paths)]
 
 pub mod abi;
 pub mod access;

@@ -77,14 +77,14 @@ impl Ord for Address {
 }
 
 impl fmt::Display for Address {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pad = Self::BITS as usize / 4;
         write!(f, "0x{:0pad$x}", self.get())
     }
 }
 
 impl fmt::Debug for Address {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{self}")
     }
 }
@@ -378,7 +378,7 @@ impl Ty for TaggedCapability {
 }
 
 impl fmt::Debug for TaggedCapability {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.valid {
             f.debug_struct("TaggedCapability")
                 .field("addr", &self.addr())
@@ -426,7 +426,7 @@ impl Permissions {
 }
 
 impl fmt::Display for Permissions {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         const NOPE: char = '-';
         f.write_char(if self.r() { 'r' } else { NOPE })?;
         f.write_char(if self.w() { 'w' } else { NOPE })?;
@@ -436,7 +436,7 @@ impl fmt::Display for Permissions {
 }
 
 impl fmt::Debug for Permissions {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{self}")
     }
 }

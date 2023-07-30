@@ -16,7 +16,7 @@ pub struct Parser2<'s> {
 
 impl<'s> Parser2<'s> {
     pub fn new(s: &'s str) -> Self {
-        let mut xops: Vec<XOp> = Vec::new();
+        let mut xops: Vec<XOp<'_>> = Vec::new();
         let mut labels: HashMap<&str, Label<'_>> = HashMap::new();
         let mut errs: Vec<ParseErr<'_>> = Vec::new();
 

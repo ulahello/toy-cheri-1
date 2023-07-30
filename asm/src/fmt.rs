@@ -34,7 +34,7 @@ impl fmt::Display for TokenClass {
 }
 
 impl fmt::Display for OperandType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             Self::Register => "register",
             Self::Immediate => "immediate",

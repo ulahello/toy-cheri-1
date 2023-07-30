@@ -42,7 +42,7 @@ pub enum MemAccessKind {
 }
 
 impl fmt::Display for MemAccessKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = match self {
             Self::Read => "read",
             Self::Write => "write",

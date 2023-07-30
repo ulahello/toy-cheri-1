@@ -501,7 +501,7 @@ impl Ty for Op {
 }
 
 impl fmt::Debug for Op {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut dbg = f.debug_struct("Op");
         dbg.field("kind", &self.kind);
         for (i, op) in [self.op1, self.op2, self.op3].into_iter().enumerate() {

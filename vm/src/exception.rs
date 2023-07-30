@@ -26,7 +26,7 @@ pub enum Exception {
 }
 
 impl fmt::Display for Exception {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidOpKind { byte } => {
                 write!(f, "invalid operation kind 0x{byte:x}")?;
