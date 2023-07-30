@@ -418,6 +418,10 @@ impl Memory {
 
                 tracing::debug!("executing syscall {kind}");
 
+                /* TODOO: allocation failures are currently fatal, but that's
+                 * silly. how should a userspace asm program handle allocation
+                 * failure, and what does that mean for the allocator api? */
+
                 match kind {
                     SyscallKind::Exit => return Err(Exception::ProcessExit),
 
