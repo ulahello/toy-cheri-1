@@ -58,7 +58,7 @@ fn exit_lex() {
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
-            typ: TokenTyp::Register(Register::A0),
+            typ: TokenTyp::Register(Register::A2),
             span: Span {
                 line: 1,
                 col_idx: 6,
@@ -157,7 +157,7 @@ fn exit_parse2() {
     assert_eq!(
         parser.next(),
         Some(Ok(Op::loadi(
-            Register::A0 as _,
+            Register::A2 as _,
             TaggedCapability::from_ugran(SyscallKind::Exit as _),
         )))
     );
@@ -536,7 +536,7 @@ fn add_lex() {
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
-            typ: TokenTyp::Register(Register::A0),
+            typ: TokenTyp::Register(Register::A2),
             span: Span {
                 line: 7,
                 col_idx: 6,
@@ -843,7 +843,7 @@ fn cmp_parse1() {
             op1: Operand {
                 typ: OperandType::Register,
                 val: Some(OperandVal::Known(TaggedCapability::from_ugran(
-                    Register::A0 as _
+                    Register::A2 as _
                 )))
             },
             op2: Operand {
