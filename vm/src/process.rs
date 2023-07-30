@@ -412,7 +412,12 @@ impl Memory {
             OpKind::Syscall => {
                 let kind = self.regs.read_data(Register::A2 as _)?;
                 let kind = SyscallKind::from_byte(kind as u8)?;
-                tracing::trace!("syscall {kind:?}");
+
+                let span = span!(Level::INFO, "syscall", kind = format_args!("{kind}"));
+                let _enter = span.enter();
+
+                tracing::debug!("executing syscall {kind}");
+
                 match kind {
                     SyscallKind::Exit => return Err(Exception::ProcessExit),
 
@@ -423,37 +428,68 @@ impl Memory {
                             self.regs.read_data(Register::A4 as _)? as u8,
                         );
                         let region = self.regs.read(&self.tags, Register::A5 as _)?;
+                        tracing::trace!(
+                            strategy = format_args!("{strategy:?}"),
+                            flags = format_args!("{flags:?}"),
+                            region = format_args!("{region:?}"),
+                            "initializing allocator"
+                        );
                         let ator = alloc::init(strategy, flags, region, self)?;
+                        tracing::trace!(ator = format_args!("{ator:?}"), "init ok");
                         self.regs.write(&mut self.tags, Register::A0 as _, ator)?;
                     }
 
                     SyscallKind::AllocDeInit => {
                         let ator = self.regs.read(&self.tags, Register::A3 as _)?;
+                        tracing::trace!(ator = format_args!("{ator:?}"), "requesting de-init");
                         let region = alloc::deinit(ator, self)?;
+                        tracing::trace!(
+                            region = format_args!("{region:?}"),
+                            "de-init ok, reclaimed region"
+                        );
                         self.regs.write(&mut self.tags, Register::A0 as _, region)?;
                     }
 
                     SyscallKind::AllocAlloc => {
                         let ator = self.regs.read(&self.tags, Register::A3 as _)?;
                         let layout = Layout::from_ugran(self.regs.read_data(Register::A4 as _)?)?;
+                        tracing::trace!(
+                            ator = format_args!("{ator:?}"),
+                            layout = format_args!("{layout:?}"),
+                            "requesting allocation"
+                        );
                         let ation = alloc::alloc(ator, layout, self)?;
+                        tracing::trace!(ation = format_args!("{ation:?}"), "allocation ok");
                         self.regs.write(&mut self.tags, Register::A0 as _, ation)?;
                     }
 
                     SyscallKind::AllocFree => {
                         let ator = self.regs.read(&self.tags, Register::A3 as _)?;
                         let ation = self.regs.read(&self.tags, Register::A4 as _)?;
+                        tracing::trace!(
+                            ator = format_args!("{ator:?}"),
+                            ation = format_args!("{ation:?}"),
+                            "requesting allocation free"
+                        );
                         alloc::free(ator, ation, self)?;
+                        tracing::trace!("freeing ok");
                     }
 
                     SyscallKind::AllocFreeAll => {
                         let ator = self.regs.read(&self.tags, Register::A3 as _)?;
+                        tracing::trace!(
+                            ator = format_args!("{ator:?}"),
+                            "requesting allocator free all"
+                        );
                         alloc::free_all(ator, self)?;
+                        tracing::trace!("freeing all ok");
                     }
 
                     SyscallKind::AllocStat => {
                         let ator = self.regs.read(&self.tags, Register::A3 as _)?;
+                        tracing::trace!(ator = format_args!("{ator:?}"), "statting allocator");
                         let stats_t = alloc::stat(ator, self)?;
+                        tracing::trace!(stats = format_args!("{stats_t:?}"), "statting ok");
                         /* TODOO: see Ty trait todo for read/write to registers */
                         let mut stats = (0 as UGran).to_le_bytes();
                         let mut cur = 0;
