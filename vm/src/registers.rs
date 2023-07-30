@@ -120,7 +120,7 @@ pub enum Register {
     S10,
     S11,
 
-    // reserved
+    // reserved, but currently used as magic place to find parent allocator
     Z0,
 }
 

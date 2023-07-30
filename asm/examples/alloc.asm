@@ -1,6 +1,11 @@
+; request allocation from parent allocator
 loadi a2, SYS_ALLOC_ALLOC
-loadi a3, allocator ; TODO
-loadi a4, layout ; TODO
+loadc a3, z0
+loadi a4, 18446744073709551680 ; 64, 0, 0, 0, 0, 0, 0, 0 | 1, 0, 0, 0, 0, 0, 0
+syscall
+
+; statting allocator
+loadi  a2, SYS_ALLOC_STAT
 syscall
 
 exit:

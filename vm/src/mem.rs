@@ -115,6 +115,11 @@ impl Memory {
             .write(&mut mem.tags, Register::Pc as _, pc)
             .unwrap();
 
+        // give init program the root allocator
+        mem.regs
+            .write(&mut mem.tags, Register::Z0 as _, root_alloc)
+            .unwrap();
+
         Ok(mem)
     }
 
