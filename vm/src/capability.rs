@@ -19,7 +19,6 @@ impl Address {
     pub const BITS: u8 = 40;
 
     pub const fn add(self, offset: UAddr) -> Self {
-        // TODO: overflow unlikely to be issue but not impossible
         Self(self.0.wrapping_add(offset))
     }
 
