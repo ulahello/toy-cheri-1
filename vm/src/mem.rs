@@ -166,9 +166,7 @@ impl Memory {
         count: UAddr,
         byte: u8,
     ) -> Result<(), Exception> {
-        let mut access = dst.access(MemAccessKind::Write, u8::LAYOUT.align, None);
-        access.len = Some(count);
-        dst.check_given_access(access)?;
+        dst.check_access(MemAccessKind::Write, u8::LAYOUT.align, Some(count))?;
 
         // casts assume that bounds of capability lie within bounds of self.mem
         let start_idx = dst.addr().get() as usize;
