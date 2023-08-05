@@ -29,10 +29,55 @@ impl Align {
     }
 }
 
+impl Ty for Align {
+    const LAYOUT: Layout = u8::LAYOUT;
+
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        Ok(Self(u8::read(src, addr, valid)?))
+    }
+
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        self.0.write(dst, addr, valid)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Layout {
     pub size: UAddr,
     pub align: Align,
+}
+
+impl Ty for Layout {
+    const LAYOUT: Layout = layout(Self::FIELDS);
+
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        let mut fields = FieldsRef::new(src, addr, valid, Self::FIELDS);
+        Ok(Self {
+            size: fields.read_next::<UAddr>()?,
+            align: fields.read_next::<Align>()?,
+        })
+    }
+
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        let mut fields = FieldsMut::new(dst, addr, valid, Self::FIELDS);
+        fields.write_next(self.size)?;
+        fields.write_next(self.align)?;
+        Ok(())
+    }
+}
+
+impl Layout {
+    const FIELDS: &'static [Layout] = &[UAddr::LAYOUT, Align::LAYOUT];
 }
 
 impl fmt::Display for Align {
