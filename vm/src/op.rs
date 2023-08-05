@@ -496,15 +496,37 @@ impl Ty for Op {
     }
 }
 
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)?;
+        let op_count = self.kind.operand_count();
+        if op_count > 0 {
+            write!(f, " ")?;
+        }
+        for (i, op) in [self.op1, self.op2, self.op3]
+            .into_iter()
+            .take(op_count.into())
+            .enumerate()
+        {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{op:?}")?;
+        }
+        Ok(())
+    }
+}
+
 impl fmt::Debug for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut dbg = f.debug_struct("Op");
         dbg.field("kind", &self.kind);
-        for (i, op) in [self.op1, self.op2, self.op3].into_iter().enumerate() {
-            let i = i as u8;
-            if i < self.kind.operand_count() {
-                dbg.field(&format!("op{i}", i = i + 1), &op);
-            }
+        for (i, op) in [self.op1, self.op2, self.op3]
+            .into_iter()
+            .take(self.kind.operand_count().into())
+            .enumerate()
+        {
+            dbg.field(&format!("op{i}", i = i + 1), &op);
         }
         dbg.finish()
     }

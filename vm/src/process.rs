@@ -34,7 +34,7 @@ impl Memory {
 
         let mut return_address = pc.set_addr(pc.addr().add(Op::LAYOUT.size));
 
-        tracing::trace!("executing {:?}", op);
+        tracing::trace!("executing {op}");
 
         match op.kind {
             OpKind::Nop => (),
