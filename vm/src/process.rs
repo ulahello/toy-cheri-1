@@ -137,48 +137,48 @@ impl Memory {
 
             OpKind::LoadC => {
                 let dst = reg(op.op1);
-                let src = reg(op.op2);
-                let val = self.regs.read(&self.tags, src)?;
+                let src = self.regs.read(&self.tags, reg(op.op2))?;
+                let val = self.read(src)?;
                 self.regs.write(&mut self.tags, dst, val)?;
             }
 
             OpKind::Store8 => {
-                let dst = op.op1;
+                let dst = self.regs.read(&self.tags, reg(op.op1))?;
                 let src = reg(op.op2);
                 let val: u8 = self.regs.read_data(src)? as _;
                 self.write(dst, val)?;
             }
 
             OpKind::Store16 => {
-                let dst = op.op1;
+                let dst = self.regs.read(&self.tags, reg(op.op1))?;
                 let src = reg(op.op2);
                 let val: u16 = self.regs.read_data(src)? as _;
                 self.write(dst, val)?;
             }
 
             OpKind::Store32 => {
-                let dst = op.op1;
+                let dst = self.regs.read(&self.tags, reg(op.op1))?;
                 let src = reg(op.op2);
                 let val: u32 = self.regs.read_data(src)? as _;
                 self.write(dst, val)?;
             }
 
             OpKind::Store64 => {
-                let dst = op.op1;
+                let dst = self.regs.read(&self.tags, reg(op.op1))?;
                 let src = reg(op.op2);
                 let val: u64 = self.regs.read_data(src)? as _;
                 self.write(dst, val)?;
             }
 
             OpKind::Store128 => {
-                let dst = op.op1;
+                let dst = self.regs.read(&self.tags, reg(op.op1))?;
                 let src = reg(op.op2);
                 let val: u128 = self.regs.read_data(src)? as _;
                 self.write(dst, val)?;
             }
 
             OpKind::StoreC => {
-                let dst = op.op1;
+                let dst = self.regs.read(&self.tags, reg(op.op1))?;
                 let src = reg(op.op2);
                 let cap = self.regs.read(&self.tags, src)?;
                 self.write(dst, cap)?;
