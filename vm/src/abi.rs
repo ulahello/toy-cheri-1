@@ -90,15 +90,7 @@ pub const fn layout(fields: &[Layout]) -> Layout {
     let mut idx = 0;
     while idx < fields.len() {
         let field = fields[idx];
-
-        // TODO: unoptimized
-        // bump to aligned start of field
-        while offset % field.align.get() != 0 {
-            // 2.next_multiple_of_two() == 2, so add 1 to always go up
-            offset = (offset + 1).next_power_of_two();
-        }
-        // bamf out
-        offset += field.size;
+        offset = FieldsLogic::field_step(field, offset).cur_offset;
 
         // alignment of struct is max of all field alignments
         if field.align.get() > align.get() {
@@ -140,7 +132,32 @@ impl<'a> FieldsLogic<'a> {
     }
 }
 
-impl<'a> Iterator for FieldsLogic<'a> {
+struct FieldStep {
+    pub field_offset: UAddr,
+    pub cur_offset: UAddr,
+}
+
+impl FieldsLogic<'_> {
+    const fn field_step(field: Layout, mut cur_offset: UAddr) -> FieldStep {
+        // bump to aligned start of field
+        while cur_offset % field.align.get() != 0 {
+            // 2.next_multiple_of_two() == 2, so add 1 to always go up
+            cur_offset = (cur_offset + 1).next_power_of_two();
+        }
+
+        let field_offset = cur_offset;
+
+        // bamf out
+        cur_offset += field.size;
+
+        FieldStep {
+            field_offset,
+            cur_offset,
+        }
+    }
+}
+
+impl Iterator for FieldsLogic<'_> {
     type Item = (
         Layout, // layout of field
         UAddr,  // field offset from start
@@ -148,20 +165,9 @@ impl<'a> Iterator for FieldsLogic<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let field = *self.fields.next()?;
-
-        // TODO: dup code
-
-        while self.cur_offset % field.align.get() != 0 {
-            // 2.next_multiple_of_two() == 2, so add 1 to always go up
-            self.cur_offset = (self.cur_offset + 1).next_power_of_two();
-        }
-
-        let field_offset = self.cur_offset;
-
-        // bamf out
-        self.cur_offset += field.size;
-
-        Some((field, field_offset))
+        let step = FieldsLogic::field_step(field, self.cur_offset);
+        self.cur_offset = step.cur_offset;
+        Some((field, step.field_offset))
     }
 }
 
