@@ -106,71 +106,6 @@ pub const fn layout(fields: &[Layout]) -> Layout {
     }
 }
 
-pub(crate) struct FieldsLogic<'a> {
-    fields: slice::Iter<'a, Layout>,
-    cur_offset: UAddr,
-}
-
-impl<'a> FieldsLogic<'a> {
-    pub fn new(fields: &'a [Layout]) -> Self {
-        Self {
-            fields: fields.iter(),
-            cur_offset: 0,
-        }
-    }
-
-    // TODO: overflow
-    /// Returns the index of the last granule in the given address span.
-    pub fn gran_span(addr: Address, size: UAddr) -> usize {
-        if size == 0 {
-            return 0;
-        }
-        let endb = addr.add(size);
-        let end = endb.sub(1);
-        let diff = end.gran().0 - addr.gran().0;
-        usize::try_from(diff).unwrap()
-    }
-}
-
-struct FieldStep {
-    pub field_offset: UAddr,
-    pub cur_offset: UAddr,
-}
-
-impl FieldsLogic<'_> {
-    const fn field_step(field: Layout, mut cur_offset: UAddr) -> FieldStep {
-        // bump to aligned start of field
-        while cur_offset % field.align.get() != 0 {
-            // 2.next_multiple_of_two() == 2, so add 1 to always go up
-            cur_offset = (cur_offset + 1).next_power_of_two();
-        }
-
-        let field_offset = cur_offset;
-
-        // bamf out
-        cur_offset += field.size;
-
-        FieldStep {
-            field_offset,
-            cur_offset,
-        }
-    }
-}
-
-impl Iterator for FieldsLogic<'_> {
-    type Item = (
-        Layout, // layout of field
-        UAddr,  // field offset from start
-    );
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let field = *self.fields.next()?;
-        let step = FieldsLogic::field_step(field, self.cur_offset);
-        self.cur_offset = step.cur_offset;
-        Some((field, step.field_offset))
-    }
-}
-
 pub struct FieldsRef<'fields, 'src, 'valid> {
     logic: FieldsLogic<'fields>,
     src: &'src [u8],
@@ -240,6 +175,71 @@ impl<'fields, 'dst, 'valid> FieldsMut<'fields, 'dst, 'valid> {
             [..=FieldsLogic::gran_span(addr, size)];
 
         src.write(dst, addr, valid)
+    }
+}
+
+pub(crate) struct FieldsLogic<'a> {
+    fields: slice::Iter<'a, Layout>,
+    cur_offset: UAddr,
+}
+
+impl<'a> FieldsLogic<'a> {
+    pub fn new(fields: &'a [Layout]) -> Self {
+        Self {
+            fields: fields.iter(),
+            cur_offset: 0,
+        }
+    }
+
+    // TODO: overflow
+    /// Returns the index of the last granule in the given address span.
+    pub fn gran_span(addr: Address, size: UAddr) -> usize {
+        if size == 0 {
+            return 0;
+        }
+        let endb = addr.add(size);
+        let end = endb.sub(1);
+        let diff = end.gran().0 - addr.gran().0;
+        usize::try_from(diff).unwrap()
+    }
+}
+
+struct FieldStep {
+    pub field_offset: UAddr,
+    pub cur_offset: UAddr,
+}
+
+impl FieldsLogic<'_> {
+    const fn field_step(field: Layout, mut cur_offset: UAddr) -> FieldStep {
+        // bump to aligned start of field
+        while cur_offset % field.align.get() != 0 {
+            // 2.next_multiple_of_two() == 2, so add 1 to always go up
+            cur_offset = (cur_offset + 1).next_power_of_two();
+        }
+
+        let field_offset = cur_offset;
+
+        // bamf out
+        cur_offset += field.size;
+
+        FieldStep {
+            field_offset,
+            cur_offset,
+        }
+    }
+}
+
+impl Iterator for FieldsLogic<'_> {
+    type Item = (
+        Layout, // layout of field
+        UAddr,  // field offset from start
+    );
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let field = *self.fields.next()?;
+        let step = FieldsLogic::field_step(field, self.cur_offset);
+        self.cur_offset = step.cur_offset;
+        Some((field, step.field_offset))
     }
 }
 
