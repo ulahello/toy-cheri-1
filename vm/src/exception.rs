@@ -2,7 +2,6 @@ use core::fmt;
 
 use crate::access::{MemAccess, RegAccess};
 use crate::alloc::{AllocErr, AllocErrKind};
-use crate::int::UAddr;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Exception {
@@ -11,8 +10,6 @@ pub enum Exception {
     InvalidSyscall { byte: u8 },
 
     InvalidAllocStrategy { byte: u8 },
-
-    InvalidAlign { align: UAddr },
 
     InvalidMemAccess { access: MemAccess },
 
@@ -36,10 +33,6 @@ impl fmt::Display for Exception {
 
             Self::InvalidAllocStrategy { byte } => {
                 write!(f, "invalid allocation strategy {byte}")?;
-            }
-
-            Self::InvalidAlign { align } => {
-                write!(f, "invalid alignment {align}: must be a power of two")?;
             }
 
             Self::InvalidMemAccess { access } => {
