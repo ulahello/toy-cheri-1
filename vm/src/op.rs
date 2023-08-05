@@ -6,8 +6,6 @@ use crate::abi::{self, Align, FieldsMut, FieldsRef, Layout, Ty};
 use crate::capability::{Address, TaggedCapability};
 use crate::exception::Exception;
 
-// TODO: document which operations operate on capabilities
-
 // informally based on riscv but this is not by definition so could change anytime
 #[deny(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,61 +48,66 @@ pub enum OpKind {
     /// Load immediate value `op2` into register `op1`.
     LoadI,
 
-    /// Load 8-bit value from register `op2` and zero-extend before storing it
-    /// in register `op1`.
+    /// Load 8-bit value from memory at register `op2` and zero-extend before
+    /// storing it in register `op1`.
     LoadU8,
 
-    /// Load 16-bit value from register `op2` and zero-extend before storing it
-    /// in register `op1`.
+    /// Load 16-bit value from memory at register `op2` and zero-extend before
+    /// storing it in register `op1`.
     LoadU16,
 
-    /// Load 32-bit value from register `op2` and zero-extend before storing it
-    /// in register `op1`.
+    /// Load 32-bit value from memory at register `op2` and zero-extend before
+    /// storing it in register `op1`.
     LoadU32,
 
-    /// Load 64-bit value from register `op2` and zero-extend before storing it
-    /// in register `op1`.
+    /// Load 64-bit value from memory at register `op2` and zero-extend before
+    /// storing it in register `op1`.
     LoadU64,
 
-    /// Load 128-bit value from register `op2` into register `op1`.
+    /// Load 128-bit value from memory at register `op2` into register `op1`.
     LoadU128,
 
-    /// Load capability from capability at register `op2` into register `op1`.
+    /// Load capability from memory at register `op2` into register `op1`.
     LoadC,
 
-    /// Store 8-bit value from the low bits of register `op2` to capability at
+    /// Store 8-bit value from the low bits of register `op2` to memory at
     /// register `op1`.
     Store8,
 
-    /// Store 16-bit value from the low bits of register `op2` to capability at
+    /// Store 16-bit value from the low bits of register `op2` to memory at
     /// register `op1`.
     Store16,
 
-    /// Store 32-bit value from the low bits of register `op2` to capability at
+    /// Store 32-bit value from the low bits of register `op2` to memory at
     /// register `op1`.
     Store32,
 
-    /// Store 64-bit value from the low bits of register `op2` to capability at
+    /// Store 64-bit value from the low bits of register `op2` to memory at
     /// register `op1`.
     Store64,
 
-    /// Store 128-bit value from the low bits of register `op2` to capability at
+    /// Store 128-bit value from the low bits of register `op2` to memory at
     /// register `op1`.
     Store128,
 
-    /// Store capability from register `op2` to capability at register `op1`.
+    /// Store capability from register `op2` to memory at register `op1`.
     StoreC,
 
     /// Add immediate `op3` to register `op2` and store the result in register
-    /// `op1`. Arithmetic overflow is ignored.
+    /// `op1`.
+    ///
+    /// Values wrap upon arithmetic overflow.
     AddI,
 
     /// Add registers `op3` to `op2` and store the result in register `op1`.
-    /// Arithmetic overflow is ignored.
+    ///
+    /// Values wrap upon arithmetic overflow.
     Add,
 
     /// Subtract registers `op3` from `op2` and store the result in register
-    /// `op1`. Arithmetic overflow is ignored.
+    /// `op1`.
+    ///
+    /// Values wrap upon arithmetic overflow.
     Sub,
 
     /// Place the value 1 in register `op1` if register `op2` is less than
@@ -201,14 +204,16 @@ pub enum OpKind {
     /// Offset the program counter address by immediate `op3` if the values of
     /// registers `op1` and `op2` are not equal.
     ///
-    /// - All computations leading to the offset operate on `SAddr` values.
+    /// - All computations leading to the offset wrap upon overflow and operate
+    /// on `SAddr` values.
     /// - Offset is computed in multiples of `Op::LAYOUT.size`.
     Bne,
 
     /// Offset the program counter address by immediate `op3` if the value of
     /// registers `op1` is less `op2`, using signed comparison.
     ///
-    /// - All computations leading to the offset operate on `SAddr` values.
+    /// - All computations leading to the offset wrap upon overflow and operate
+    /// on `SAddr` values.
     /// - Offset is computed in multiples of `Op::LAYOUT.size`.
     Blts,
 
@@ -216,14 +221,16 @@ pub enum OpKind {
     /// registers `op1` is greater than or equal to `op2`, using signed
     /// comparison.
     ///
-    /// - All computations leading to the offset operate on `SAddr` values.
+    /// - All computations leading to the offset wrap upon overflow and operate
+    /// on `SAddr` values.
     /// - Offset is computed in multiples of `Op::LAYOUT.size`.
     Bges,
 
     /// Offset the program counter address by immediate `op3` if value of
     /// registers `op1` is less than `op2`, using unsigned comparison.
     ///
-    /// - All computations leading to the offset operate on `SAddr` values.
+    /// - All computations leading to the offset wrap upon overflow and operate
+    /// on `SAddr` values.
     /// - Offset is computed in multiples of `Op::LAYOUT.size`.
     Bltu,
 
@@ -231,7 +238,8 @@ pub enum OpKind {
     /// registers `op1` is greater than or equal to `op2`, using unsigned
     /// comparison.
     ///
-    /// - All computations leading to the offset operate on `SAddr` values.
+    /// - All computations leading to the offset wrap upon overflow and operate
+    /// on `SAddr` values.
     /// - Offset is computed in multiples of `Op::LAYOUT.size`.
     Bgeu,
 
