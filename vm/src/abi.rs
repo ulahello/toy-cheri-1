@@ -158,6 +158,7 @@ pub const fn layout(fields: &[Layout]) -> Layout {
     }
 }
 
+#[derive(Debug)]
 pub struct FieldsRef<'fields, 'src, 'valid> {
     logic: FieldsLogic<'fields>,
     src: &'src [u8],
@@ -165,6 +166,7 @@ pub struct FieldsRef<'fields, 'src, 'valid> {
     valid: &'valid BitSlice<u8>,
 }
 
+#[derive(Debug)]
 pub struct FieldsMut<'fields, 'dst, 'valid> {
     logic: FieldsLogic<'fields>,
     dst: &'dst mut [u8],
@@ -230,6 +232,7 @@ impl<'fields, 'dst, 'valid> FieldsMut<'fields, 'dst, 'valid> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct FieldsLogic<'a> {
     fields: slice::Iter<'a, Layout>,
     cur_offset: UAddr,
@@ -293,6 +296,10 @@ impl Iterator for FieldsLogic<'_> {
 
 impl Drop for FieldsLogic<'_> {
     fn drop(&mut self) {
-        debug_assert_eq!(None, self.fields.next());
+        debug_assert_eq!(
+            None,
+            self.fields.next(),
+            "FieldsLogic dropped with remaining field(s)"
+        );
     }
 }
