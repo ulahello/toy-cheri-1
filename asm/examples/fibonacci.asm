@@ -1,4 +1,5 @@
 _start:
+	; TODO: why does it raise invalid operation when n is too high?
 	jal ra, fib
 	jal zero, exit
 
