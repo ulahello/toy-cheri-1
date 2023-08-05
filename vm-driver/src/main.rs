@@ -27,8 +27,12 @@ use fruticose_vm::op::Op;
 #[derive(FromArgs)]
 struct Args {
     /// granules of physical memory to use
-    #[argh(option, short = 'g')]
+    #[argh(option, short = 'g', default = "4096")]
     granules: UAddr,
+
+    /// stack size in bytes for init program
+    #[argh(option, short = 's', default = "1024")]
+    stack_size: UAddr,
 
     /// path to init program assembly
     #[argh(option, short = 'i')]
@@ -59,7 +63,8 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
 
     let mut mem = {
         let init: Vec<Op> = assemble_init(&args.init).context("failed to load init program")?;
-        Memory::new(args.granules, init.iter()).context("failed to instantiate memory")?
+        Memory::new(args.granules, args.stack_size, init.iter())
+            .context("failed to instantiate memory")?
     };
 
     tracing::info!("execution start");

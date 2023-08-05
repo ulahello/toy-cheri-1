@@ -8,7 +8,7 @@ mod rt {
 
     #[test]
     fn invalidate_cap() -> Result<(), Exception> {
-        let mut mem = Memory::new(32, [].iter()).unwrap();
+        let mut mem = Memory::new(32, 0, [].iter()).unwrap();
         let root_alloc = mem.regs.read(&mem.tags, Register::Z0 as _)?;
         let ation = alloc::alloc(root_alloc, TaggedCapability::LAYOUT, &mut mem)?;
         mem.write(ation, ation)?;
@@ -61,7 +61,7 @@ mod exec {
     #[test]
     fn add() {
         let ops = assemble(ADD).unwrap();
-        let mut mem = Memory::new(32, ops.iter()).unwrap();
+        let mut mem = Memory::new(32, 0, ops.iter()).unwrap();
         drop(ops);
         exec(&mut mem).unwrap();
         expect_in_reg(&mut mem, Register::T1, TaggedCapability::from_ugran(23));
@@ -72,7 +72,7 @@ mod exec {
     #[test]
     fn cmp() {
         let ops = assemble(CMP).unwrap();
-        let mut mem = Memory::new(64, ops.iter()).unwrap();
+        let mut mem = Memory::new(64, 0, ops.iter()).unwrap();
         drop(ops);
         exec(&mut mem).unwrap();
         expect_in_reg(&mut mem, Register::T1, TaggedCapability::from_ugran(47));
@@ -83,7 +83,7 @@ mod exec {
     #[test]
     fn jmp_back() {
         let ops = assemble(JMP_BACK).unwrap();
-        let mut mem = Memory::new(32, ops.iter()).unwrap();
+        let mut mem = Memory::new(32, 0, ops.iter()).unwrap();
         drop(ops);
         exec(&mut mem).unwrap();
         expect_in_reg(&mut mem, Register::T0, TaggedCapability::from_ugran(53));

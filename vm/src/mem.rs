@@ -5,7 +5,7 @@ use bitvec::order::Lsb0;
 use bitvec::slice::BitSlice;
 use tracing::{span, Level};
 
-use crate::abi::{FieldsLogic, Layout, Ty};
+use crate::abi::{Align, FieldsLogic, Layout, Ty};
 use crate::access::MemAccessKind;
 use crate::alloc::{self, InitFlags, Strategy};
 use crate::capability::{Address, Capability, Granule, Permissions, TaggedCapability};
@@ -25,6 +25,7 @@ pub struct Memory {
 impl Memory {
     pub fn new<'op, I: Iterator<Item = &'op Op> + ExactSizeIterator>(
         granules: UAddr,
+        stack_size: UAddr,
         init: I,
     ) -> anyhow::Result<Self> {
         fn log_stats(ator: TaggedCapability, mem: &Memory) -> anyhow::Result<()> {
@@ -71,7 +72,7 @@ impl Memory {
             root: TaggedCapability::INVALID,
         };
 
-        /* instantiate init program */
+        /* instantiate root allocator */
         // set up root capability
         tracing::debug!("acquiring root capability");
         mem.root = TaggedCapability ::new(
@@ -93,7 +94,7 @@ impl Memory {
         .context("failed to initialize root allocator")?;
         log_stats(root_alloc, &mem)?;
 
-        // write init program
+        /* write init program */
         tracing::debug!("allocating program");
         let mut pc = alloc::alloc(
             root_alloc,
@@ -116,7 +117,26 @@ impl Memory {
             .write(&mut mem.tags, Register::Pc as _, pc)
             .unwrap();
 
-        // give init program the root allocator
+        /* instantiate call stack */
+        tracing::debug!("allocating program call stack");
+        let call_stack = alloc::alloc(
+            root_alloc,
+            Layout {
+                size: stack_size,
+                align: Align::new(1).unwrap(),
+            },
+            &mut mem,
+        )
+        .context("failed to allocate init program call stack")?;
+        log_stats(root_alloc, &mem)?;
+
+        // write to Sp
+        let sp = call_stack.set_addr(call_stack.endb());
+        mem.regs
+            .write(&mut mem.tags, Register::Sp as _, sp)
+            .unwrap();
+
+        /* give init program the root allocator */
         mem.regs
             .write(&mut mem.tags, Register::Z0 as _, root_alloc)
             .unwrap();
