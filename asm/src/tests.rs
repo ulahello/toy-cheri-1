@@ -153,15 +153,33 @@ fn exit_lex() {
 fn exit_parse2() {
     let src = EXIT;
     let mut parser = Parser2::new(src);
-    assert_eq!(parser.next(), Some(Ok(Op::nop())));
     assert_eq!(
         parser.next(),
-        Some(Ok(Op::loadi(
-            Register::A2 as _,
-            TaggedCapability::from_ugran(SyscallKind::Exit as _),
-        )))
+        Some(Ok(Op {
+            kind: OpKind::Nop,
+            op1: TaggedCapability::INVALID,
+            op2: TaggedCapability::INVALID,
+            op3: TaggedCapability::INVALID,
+        }))
     );
-    assert_eq!(parser.next(), Some(Ok(Op::syscall())));
+    assert_eq!(
+        parser.next(),
+        Some(Ok(Op {
+            kind: OpKind::LoadI,
+            op1: TaggedCapability::from_ugran(Register::A2 as _),
+            op2: TaggedCapability::from_ugran(SyscallKind::Exit as _),
+            op3: TaggedCapability::INVALID
+        }))
+    );
+    assert_eq!(
+        parser.next(),
+        Some(Ok(Op {
+            kind: OpKind::Syscall,
+            op1: TaggedCapability::INVALID,
+            op2: TaggedCapability::INVALID,
+            op3: TaggedCapability::INVALID,
+        }))
+    );
     assert_eq!(parser.next(), None);
 }
 

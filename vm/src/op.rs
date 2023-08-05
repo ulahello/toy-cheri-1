@@ -460,35 +460,6 @@ pub struct Op {
 }
 
 impl Op {
-    pub const fn nop() -> Self {
-        Self {
-            kind: OpKind::Nop,
-            op1: TaggedCapability::INVALID,
-            op2: TaggedCapability::INVALID,
-            op3: TaggedCapability::INVALID,
-        }
-    }
-
-    pub const fn loadi(dst: u8, imm: TaggedCapability) -> Self {
-        Self {
-            kind: OpKind::LoadI,
-            op1: TaggedCapability::from_ugran(dst as _), // register destination
-            op2: imm,                                    // immediate value
-            op3: TaggedCapability::INVALID,
-        }
-    }
-
-    pub const fn syscall() -> Self {
-        Self {
-            kind: OpKind::Syscall,
-            op1: TaggedCapability::INVALID,
-            op2: TaggedCapability::INVALID,
-            op3: TaggedCapability::INVALID,
-        }
-    }
-}
-
-impl Op {
     const FIELDS: &'static [Layout] = &[
         OpKind::LAYOUT,
         TaggedCapability::LAYOUT,
