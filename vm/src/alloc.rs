@@ -175,6 +175,11 @@ impl Ty for Header {
     }
 }
 
+/// Initialize an allocator.
+///
+/// Pass ownership of `region` to a new allocator with the specified
+/// configuration. On success, returns a sealed capability that can be later
+/// unsealed by the allocator to access the region.
 pub fn init(
     strat: Strategy,
     flags: InitFlags,
@@ -206,6 +211,10 @@ pub fn init(
     Ok(ret)
 }
 
+/// De-initializes an allocator.
+///
+/// This frees all memory allocated by the allocator and returns the original
+/// span passed to [`init`].
 pub fn deinit(ator: TaggedCapability, mem: &mut Memory) -> Result<TaggedCapability, Exception> {
     free_all(ator, mem)?;
     todo!()
