@@ -1,4 +1,4 @@
-use fruticose_vm::int::UGran;
+use fruticose_vm::int::{UGran, UADDR_SIZE, UGRAN_SIZE};
 use fruticose_vm::op::OpKind;
 use fruticose_vm::registers::Register;
 use fruticose_vm::syscall::SyscallKind;
@@ -187,6 +187,10 @@ impl<'s> Lexer<'s> {
             "SYS_ALLOC_FREE" => TokenTyp::Syscall(SyscallKind::AllocFree),
             "SYS_ALLOC_FREE_ALL" => TokenTyp::Syscall(SyscallKind::AllocFreeAll),
             "SYS_ALLOC_STAT" => TokenTyp::Syscall(SyscallKind::AllocStat),
+
+            // helpful constants
+            "UGRAN_SIZE" => TokenTyp::UnsignedInt(UGRAN_SIZE.into()),
+            "UADDR_SIZE" => TokenTyp::UnsignedInt(UADDR_SIZE.into()),
 
             _ => match span.parse::<UGran>() {
                 Ok(int) => TokenTyp::UnsignedInt(int),

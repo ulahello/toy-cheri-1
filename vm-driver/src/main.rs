@@ -72,10 +72,15 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
         match mem.execute_op() {
             Ok(()) => (),
             Err(Exception::ProcessExit) => break,
-            other => other?,
+            Err(other) => {
+                eprintln!("{:#?}", mem.regs);
+                return Err(other.into());
+            }
         }
     }
     tracing::info!("execution halted");
+    eprintln!("{:#?}", mem.regs);
+    // eprintln!("{:#?}", mem.mem);
 
     Ok(())
 }

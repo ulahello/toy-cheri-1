@@ -25,6 +25,7 @@ mod exec {
     use fruticose_asm::parse2::Parser2;
     use fruticose_vm::capability::TaggedCapability;
     use fruticose_vm::exception::Exception;
+    use fruticose_vm::int::UGran;
     use fruticose_vm::mem::Memory;
     use fruticose_vm::op::Op;
     use fruticose_vm::registers::Register;
@@ -32,6 +33,7 @@ mod exec {
     const ADD: &str = include_str!("../../asm/examples/add.asm");
     const CMP: &str = include_str!("../../asm/examples/cmp.asm");
     const JMP_BACK: &str = include_str!("../../asm/examples/jmp-back.asm");
+    const FIB: &str = include_str!("../../asm/examples/fibonacci.asm");
 
     fn assemble(src: &str) -> Result<Vec<Op>, ParseErr> {
         let ops = Parser2::new(src)
@@ -87,5 +89,29 @@ mod exec {
         drop(ops);
         exec(&mut mem).unwrap();
         expect_in_reg(&mut mem, Register::T0, TaggedCapability::from_ugran(53));
+    }
+
+    #[test]
+    fn fibonacci() -> Result<(), Exception> {
+        const fn fib(n: UGran) -> UGran {
+            match n {
+                0 => 0,
+                1 => 1,
+                _ => fib(n - 1) + fib(n - 2),
+            }
+        }
+
+        let ops = assemble(FIB).unwrap();
+        let mut mem = Memory::new(1024, 1024, ops.iter()).unwrap();
+        let pc = mem.regs.read(&mem.tags, Register::Pc as _)?;
+        for n in 0..10 {
+            println!("fib(n = {n})");
+            mem.regs.write(&mut mem.tags, Register::Pc as _, pc)?; // reset execution
+            mem.regs.write_data(&mut mem.tags, Register::A2 as _, n)?;
+            exec(&mut mem).unwrap();
+            expect_in_reg(&mut mem, Register::A0, TaggedCapability::from_ugran(fib(n)));
+        }
+
+        Ok(())
     }
 }
