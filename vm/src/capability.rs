@@ -184,15 +184,6 @@ impl Capability {
             | (self.perms.bits() as UGran) << (Address::BITS * 3)
     }
 
-    pub const fn is_bounded(&self) -> bool {
-        self.is_addr_bounded(self.addr)
-    }
-
-    pub const fn is_addr_bounded(&self, addr: Address) -> bool {
-        // HACK: Address should be const comparable
-        addr.get() >= self.start.get() && addr.get() < self.endb.get()
-    }
-
     pub const fn addr(self) -> Address {
         self.addr
     }
@@ -280,14 +271,6 @@ impl TaggedCapability {
 
     pub const fn capability(self) -> Capability {
         self.capa
-    }
-
-    pub const fn is_bounded(&self) -> bool {
-        self.capa.is_bounded()
-    }
-
-    pub const fn is_addr_bounded(&self, addr: Address) -> bool {
-        self.capa.is_addr_bounded(addr)
     }
 
     pub const fn is_valid(&self) -> bool {

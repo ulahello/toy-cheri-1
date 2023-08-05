@@ -16,11 +16,14 @@ pub struct MemAccess {
 
 impl MemAccess {
     pub const fn is_bounded(&self) -> bool {
-        let span_start = self.tcap.addr();
         if let Some(len) = self.len {
-            let span_end = self.tcap.addr().add(len.saturating_sub(1));
-            self.tcap.is_addr_bounded(span_start)
-                && (len == 0 || self.tcap.is_addr_bounded(span_end))
+            let span_start = self.tcap.addr();
+            let span_endb = self.tcap.endb();
+            if let Some(max_len) = span_endb.get().checked_sub(span_start.get()) {
+                len <= max_len
+            } else {
+                false
+            }
         } else {
             false
         }
