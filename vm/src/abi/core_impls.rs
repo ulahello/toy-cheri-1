@@ -8,6 +8,7 @@ use crate::exception::Exception;
 use crate::int::{SAddr, SGran, UAddr, UGran};
 
 /* abi types */
+
 impl Ty for Layout {
     const LAYOUT: Layout = super::layout(Self::FIELDS);
 
