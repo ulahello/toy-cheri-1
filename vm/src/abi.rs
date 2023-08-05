@@ -293,13 +293,3 @@ impl Iterator for FieldsLogic<'_> {
         Some((field, step.field_offset))
     }
 }
-
-impl Drop for FieldsLogic<'_> {
-    fn drop(&mut self) {
-        debug_assert_eq!(
-            None,
-            self.fields.next(),
-            "FieldsLogic dropped with remaining field(s)"
-        );
-    }
-}
