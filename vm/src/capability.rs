@@ -1,4 +1,5 @@
 use bitflags::bitflags;
+use bitvec::slice::BitSlice;
 
 use core::cmp::Ordering;
 use core::fmt::{self, Write};
@@ -7,7 +8,6 @@ use crate::abi::{Align, Layout, Ty};
 use crate::access::{MemAccess, MemAccessKind};
 use crate::exception::Exception;
 use crate::int::{SAddr, UAddr, UGran, UGRAN_SIZE, UNINIT};
-use crate::mem::Memory;
 
 /* TODOOO: implement sealed capabilities using metadata */
 
@@ -52,6 +52,29 @@ impl Address {
 
     pub const fn align_up(self, align: Align) -> Self {
         Self(self.get().next_multiple_of(align.get()))
+    }
+
+    pub const fn align_down(self, align: Align) -> Self {
+        // only keep bits align and up
+        Self(self.get() & !(align.get() - 1))
+    }
+}
+
+impl Ty for Address {
+    // TODO: should these only occupy Self::BITS?
+    const LAYOUT: Layout = UAddr::LAYOUT;
+
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        Ok(Self(UAddr::read(src, addr, valid)?))
+    }
+
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        self.get().write(dst, addr, valid)
     }
 }
 
@@ -204,15 +227,20 @@ impl Capability {
 impl Ty for Capability {
     const LAYOUT: Layout = Layout {
         size: UGRAN_SIZE as _,
-        align: Align::new(UGRAN_SIZE as _).unwrap(),
+        align: Align::new(1).unwrap(),
     };
 
-    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        Ok(Self::from_ugran(mem.read(src)?))
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        Ok(Self::from_ugran(UGran::read(src, addr, valid)?))
     }
 
-    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        mem.write(dst, self.to_ugran())
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        self.to_ugran().write(dst, addr, valid)
     }
 }
 
@@ -356,22 +384,27 @@ impl TaggedCapability {
 }
 
 impl Ty for TaggedCapability {
-    const LAYOUT: Layout = Capability::LAYOUT;
+    const LAYOUT: Layout = Layout {
+        size: Capability::LAYOUT.size,
+        align: Align::new(UGRAN_SIZE as _).unwrap(),
+    };
 
-    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        let capa = Capability::read_from_mem(src, mem)?;
-        let valid = mem
-            .tags
-            .read_gran(src.addr().gran())
-            .expect("read succeeded so address is valid");
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        debug_assert_eq!(valid.len(), 1);
+        let capa = Capability::read(src, addr, valid)?;
+        let valid = valid[0];
         Ok(Self::new(capa, valid))
     }
 
-    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        self.capa.write_to_mem(dst, mem)?;
-        mem.tags
-            .write_gran(dst.addr().gran(), self.is_valid())
-            .expect("valid address must be present in the tag controller");
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        debug_assert_eq!(valid.len(), 1);
+        self.capa.write(dst, addr, valid)?;
+        *valid.get_mut(0).unwrap() = self.is_valid();
         Ok(())
     }
 }
@@ -421,6 +454,24 @@ impl Permissions {
             MemAccessKind::Write => self.w(),
             MemAccessKind::Execute => self.x(),
         }
+    }
+}
+
+impl Ty for Permissions {
+    const LAYOUT: Layout = u8::LAYOUT;
+
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        Ok(Self::from_bits_truncate(u8::read(src, addr, valid)?))
+    }
+
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        let repr: u8 = self.bits();
+        repr.write(dst, addr, valid)
     }
 }
 

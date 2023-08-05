@@ -2,9 +2,10 @@ use anyhow::{anyhow, Context};
 use bitvec::bitbox;
 use bitvec::boxed::BitBox;
 use bitvec::order::Lsb0;
+use bitvec::slice::BitSlice;
 use tracing::{span, Level};
 
-use crate::abi::{Align, Layout, Ty};
+use crate::abi::{FieldsLogic, Layout, Ty};
 use crate::access::MemAccessKind;
 use crate::alloc::{self, InitFlags, Strategy};
 use crate::capability::{Address, Capability, Granule, Permissions, TaggedCapability};
@@ -125,16 +126,36 @@ impl Memory {
 
     pub fn read<T: Ty>(&self, mut src: TaggedCapability) -> Result<T, Exception> {
         let layout = T::LAYOUT;
-        src.check_access(MemAccessKind::Read, layout.align, Some(layout.size))?;
-        src = src.set_bounds(src.addr(), src.addr().add(T::LAYOUT.size));
-        T::read_from_mem(src, self)
+        let access = src.access(MemAccessKind::Read, layout.align, Some(layout.size));
+        src.check_given_access(access)?;
+
+        // restrict bounds to the type's layout
+        src = src.set_bounds(src.addr(), src.addr().add(layout.size));
+
+        let bytes = Self::slice_raw(&self.mem, src, layout)
+            .ok_or(Exception::InvalidMemAccess { access })?;
+        let tags = self
+            .tags
+            .grans(src.addr(), layout.size)
+            .ok_or(Exception::InvalidMemAccess { access })?;
+        T::read(bytes, src.addr(), tags)
     }
 
     pub fn write<T: Ty>(&mut self, mut dst: TaggedCapability, val: T) -> Result<(), Exception> {
         let layout = T::LAYOUT;
-        dst.check_access(MemAccessKind::Write, layout.align, Some(layout.size))?;
-        dst = dst.set_bounds(dst.addr(), dst.addr().add(T::LAYOUT.size));
-        val.write_to_mem(dst, self)
+        let access = dst.access(MemAccessKind::Write, layout.align, Some(layout.size));
+        dst.check_given_access(access)?;
+
+        // restrict bounds to the type's layout
+        dst = dst.set_bounds(dst.addr(), dst.addr().add(layout.size));
+
+        let bytes = Self::slice_mut_raw(&mut self.mem, dst, layout)
+            .ok_or(Exception::InvalidMemAccess { access })?;
+        let tags = self
+            .tags
+            .grans_mut(dst.addr(), layout.size)
+            .ok_or(Exception::InvalidMemAccess { access })?;
+        val.write(bytes, dst.addr(), tags)
     }
 
     pub fn write_iter<'elem, T: Ty + 'elem, I: Iterator<Item = &'elem T> + ExactSizeIterator>(
@@ -177,34 +198,20 @@ impl Memory {
 }
 
 impl Memory {
-    pub(crate) fn read_raw(
-        &self,
-        src: TaggedCapability,
-        layout: Layout,
-    ) -> Result<&[u8], Exception> {
-        src.check_access(MemAccessKind::Read, layout.align, Some(layout.size))?;
-
-        // casts assume that bounds of capability lie within bounds of self.mem
-        let start_idx = src.addr().get() as usize;
-        Ok(&self.mem[start_idx..][..layout.size as usize])
+    fn slice_raw(mem: &Box<[u8]>, src: TaggedCapability, layout: Layout) -> Option<&[u8]> {
+        let start_idx = usize::try_from(src.addr().get()).ok()?;
+        let layout_size = usize::try_from(layout.size).ok()?;
+        mem.get(start_idx..)?.get(..layout_size)
     }
 
-    pub(crate) fn write_raw(
-        &mut self,
+    fn slice_mut_raw(
+        mem: &mut Box<[u8]>,
         dst: TaggedCapability,
-        align: Align,
-        buf: &[u8],
-    ) -> Result<(), Exception> {
-        let mut access = dst.access(MemAccessKind::Write, align, None);
-        let buf_len =
-            UAddr::try_from(buf.len()).map_err(|_| Exception::InvalidMemAccess { access })?;
-        access.len = Some(buf_len);
-        dst.check_given_access(access)?;
-
-        // casts assume that bounds of capability lie within bounds of self.mem
-        let start_idx = dst.addr().get() as usize;
-        self.mem[start_idx..][..buf_len as usize].copy_from_slice(buf);
-        Ok(())
+        layout: Layout,
+    ) -> Option<&mut [u8]> {
+        let start_idx = usize::try_from(dst.addr().get()).ok()?;
+        let layout_size = usize::try_from(layout.size).ok()?;
+        mem.get_mut(start_idx..)?.get_mut(..layout_size)
     }
 }
 
@@ -228,30 +235,37 @@ impl TagController {
         Ok(Self { mem })
     }
 
-    pub fn read_gran(&self, gran: Granule) -> Option<bool> {
-        let idx = Self::gran_to_idx(gran)?;
-        Some(self.mem[idx])
+    pub fn grans(&self, start: Address, size: UAddr) -> Option<&BitSlice<u8>> {
+        self.mem
+            .get(Self::gran_to_idx(start.gran())?..)
+            .and_then(|slice| slice.get(..=FieldsLogic::gran_span(start, size)))
     }
 
-    pub fn write_gran(&mut self, gran: Granule, valid: bool) -> Option<()> {
-        let idx = Self::gran_to_idx(gran)?;
-        *self.mem.get_mut(idx)? = valid;
-        Some(())
+    pub fn grans_mut(&mut self, start: Address, size: UAddr) -> Option<&mut BitSlice<u8>> {
+        self.mem
+            .get_mut(Self::gran_to_idx(start.gran())?..)
+            .and_then(|slice| slice.get_mut(..=FieldsLogic::gran_span(start, size)))
+    }
+
+    pub fn reg(&self, reg: u8) -> Option<&BitSlice<u8>> {
+        let reg = Self::reg_to_idx(reg)?;
+        self.mem.get(reg..=reg)
+    }
+
+    pub fn reg_mut(&mut self, reg: u8) -> Option<&mut BitSlice<u8>> {
+        let reg = Self::reg_to_idx(reg)?;
+        self.mem.get_mut(reg..=reg)
     }
 
     pub fn read_reg(&self, reg: u8) -> Option<bool> {
-        let idx = Self::reg_to_idx(reg)?;
-        self.mem.get(idx).map(|bit| *bit)
+        let reg = Self::reg_to_idx(reg)?;
+        self.mem.get(reg).as_deref().copied()
     }
 
     pub fn write_reg(&mut self, reg: u8, valid: bool) -> Option<()> {
-        let idx = Self::reg_to_idx(reg)?;
-        if let Some(mut bit) = self.mem.get_mut(idx) {
-            *bit = valid;
-            Some(())
-        } else {
-            None
-        }
+        let reg = Self::reg_to_idx(reg)?;
+        *self.mem.get_mut(reg)? = valid;
+        Some(())
     }
 }
 

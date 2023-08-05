@@ -5,7 +5,7 @@ use crate::access::MemAccessKind;
 use crate::alloc::{self, InitFlags, Strategy};
 use crate::capability::{Address, Permissions, TaggedCapability};
 use crate::exception::Exception;
-use crate::int::{addr_sign, gran_sign, gran_unsign, UAddr, UGran};
+use crate::int::{addr_sign, gran_sign, SAddr, SGran, UAddr, UGran};
 use crate::mem::Memory;
 use crate::op::{Op, OpKind};
 use crate::registers::Register;
@@ -43,15 +43,14 @@ impl Memory {
                 let dst = reg(op.op1);
                 let tcap = self.regs.read(&self.tags, reg(op.op2))?;
                 let addr = tcap.addr();
-                self.regs
-                    .write_data(&mut self.tags, dst, addr.get().into())?;
+                self.regs.write_ty(&mut self.tags, dst, addr)?;
             }
 
             OpKind::CSetAddr => {
                 let tcap_reg = reg(op.op1);
                 let mut tcap = self.regs.read(&self.tags, tcap_reg)?;
-                let addr = self.regs.read_data(reg(op.op2))?;
-                tcap = tcap.set_addr(Address(addr as UAddr));
+                let addr: Address = self.regs.read_ty(&self.tags, reg(op.op2))?;
+                tcap = tcap.set_addr(addr);
                 self.regs.write(&mut self.tags, tcap_reg, tcap)?;
             }
 
@@ -61,18 +60,16 @@ impl Memory {
                 let tcap = self.regs.read(&self.tags, reg(op.op3))?;
                 let start = tcap.start();
                 let endb = tcap.endb();
-                self.regs
-                    .write_data(&mut self.tags, start_dst, start.get().into())?;
-                self.regs
-                    .write_data(&mut self.tags, endb_dst, endb.get().into())?;
+                self.regs.write_ty(&mut self.tags, start_dst, start)?;
+                self.regs.write_ty(&mut self.tags, endb_dst, endb)?;
             }
 
             OpKind::CSetBound => {
                 let tcap_reg = reg(op.op1);
                 let mut tcap = self.regs.read(&self.tags, tcap_reg)?;
-                let start = self.regs.read_data(reg(op.op2))?;
-                let endb = self.regs.read_data(reg(op.op3))?;
-                tcap = tcap.set_bounds(Address(start as UAddr), Address(endb as UAddr));
+                let start: Address = self.regs.read_ty(&self.tags, reg(op.op2))?;
+                let endb: Address = self.regs.read_ty(&self.tags, reg(op.op3))?;
+                tcap = tcap.set_bounds(start, endb);
                 self.regs.write(&mut self.tags, tcap_reg, tcap)?;
             }
 
@@ -80,23 +77,21 @@ impl Memory {
                 let dst = reg(op.op1);
                 let tcap = self.regs.read(&self.tags, reg(op.op2))?;
                 let perms = tcap.perms();
-                self.regs
-                    .write_data(&mut self.tags, dst, perms.bits().into())?;
+                self.regs.write_ty(&mut self.tags, dst, perms)?;
             }
 
             OpKind::CSetPerm => {
                 let tcap_reg = reg(op.op1);
                 let mut tcap = self.regs.read(&self.tags, tcap_reg)?;
-                let perms = self.regs.read_data(reg(op.op2))?;
-                tcap = tcap.set_perms(Permissions::from_bits_truncate(perms as u8));
+                let perms: Permissions = self.regs.read_ty(&self.tags, reg(op.op2))?;
+                tcap = tcap.set_perms(perms);
                 self.regs.write(&mut self.tags, tcap_reg, tcap)?;
             }
 
             OpKind::CGetValid => {
                 let dst = reg(op.op1);
                 let tcap = self.regs.read(&self.tags, reg(op.op2))?;
-                self.regs
-                    .write_data(&mut self.tags, dst, tcap.is_valid() as _)?;
+                self.regs.write_ty(&mut self.tags, dst, tcap.is_valid())?;
             }
 
             OpKind::LoadI => {
@@ -191,149 +186,143 @@ impl Memory {
 
             OpKind::AddI => {
                 let dst = reg(op.op1);
-                let addend = self.regs.read_data(reg(op.op2))?;
-                let imm = op.op3.to_ugran();
+                let addend: UGran = self.regs.read_data(reg(op.op2))?;
+                let imm: UGran = op.op3.to_ugran();
                 let sum = addend.wrapping_add(imm);
                 self.regs.write_data(&mut self.tags, dst, sum)?;
             }
 
             OpKind::Add => {
                 let dst = reg(op.op1);
-                let add1 = self.regs.read_data(reg(op.op2))?;
-                let add2 = self.regs.read_data(reg(op.op3))?;
+                let add1: UGran = self.regs.read_data(reg(op.op2))?;
+                let add2: UGran = self.regs.read_data(reg(op.op3))?;
                 let sum = add1.wrapping_add(add2);
                 self.regs.write_data(&mut self.tags, dst, sum)?;
             }
 
             OpKind::Sub => {
                 let dst = reg(op.op1);
-                let add1 = self.regs.read_data(reg(op.op2))?;
-                let add2 = self.regs.read_data(reg(op.op3))?;
+                let add1: UGran = self.regs.read_data(reg(op.op2))?;
+                let add2: UGran = self.regs.read_data(reg(op.op3))?;
                 let sum = add1.wrapping_sub(add2);
                 self.regs.write_data(&mut self.tags, dst, sum)?;
             }
 
             OpKind::SltsI => {
                 let dst = reg(op.op1);
-                let op2 = gran_sign(self.regs.read_data(reg(op.op2))?);
-                let op3 = gran_sign(op.op3.to_ugran());
-                self.regs
-                    .write_data(&mut self.tags, dst, (op2 < op3) as _)?;
+                let op2: SGran = self.regs.read_ty(&self.tags, reg(op.op2))?;
+                let op3: SGran = gran_sign(op.op3.to_ugran());
+                self.regs.write_ty(&mut self.tags, dst, op2 < op3)?;
             }
 
             OpKind::SltuI => {
                 let dst = reg(op.op1);
-                let op2 = self.regs.read_data(reg(op.op2))?;
-                let op3 = op.op3.to_ugran();
-                self.regs
-                    .write_data(&mut self.tags, dst, (op2 < op3) as _)?;
+                let op2: UGran = self.regs.read_data(reg(op.op2))?;
+                let op3: UGran = op.op3.to_ugran();
+                self.regs.write_ty(&mut self.tags, dst, op2 < op3)?;
             }
 
             OpKind::Slts => {
                 let dst = reg(op.op1);
-                let op2 = gran_sign(self.regs.read_data(reg(op.op2))?);
-                let op3 = gran_sign(self.regs.read_data(reg(op.op3))?);
-                self.regs
-                    .write_data(&mut self.tags, dst, (op2 < op3) as _)?;
+                let op2: SGran = self.regs.read_ty(&self.tags, reg(op.op2))?;
+                let op3: SGran = self.regs.read_ty(&self.tags, reg(op.op3))?;
+                self.regs.write_ty(&mut self.tags, dst, op2 < op3)?;
             }
 
             OpKind::Sltu => {
                 let dst = reg(op.op1);
-                let op2 = self.regs.read_data(reg(op.op2))?;
-                let op3 = self.regs.read_data(reg(op.op3))?;
-                self.regs
-                    .write_data(&mut self.tags, dst, (op2 < op3) as _)?;
+                let op2: UGran = self.regs.read_data(reg(op.op2))?;
+                let op3: UGran = self.regs.read_data(reg(op.op3))?;
+                self.regs.write_ty(&mut self.tags, dst, op2 < op3)?;
             }
 
             OpKind::XorI => {
                 let dst = reg(op.op1);
-                let op2 = self.regs.read_data(reg(op.op2))?;
-                let op3 = op.op3.to_ugran();
+                let op2: UGran = self.regs.read_data(reg(op.op2))?;
+                let op3: UGran = op.op3.to_ugran();
                 self.regs.write_data(&mut self.tags, dst, op2 ^ op3)?;
             }
 
             OpKind::Xor => {
                 let dst = reg(op.op1);
-                let op2 = self.regs.read_data(reg(op.op2))?;
-                let op3 = self.regs.read_data(reg(op.op3))?;
+                let op2: UGran = self.regs.read_data(reg(op.op2))?;
+                let op3: UGran = self.regs.read_data(reg(op.op3))?;
                 self.regs.write_data(&mut self.tags, dst, op2 ^ op3)?;
             }
 
             OpKind::OrI => {
                 let dst = reg(op.op1);
-                let op2 = self.regs.read_data(reg(op.op2))?;
-                let op3 = op.op3.to_ugran();
+                let op2: UGran = self.regs.read_data(reg(op.op2))?;
+                let op3: UGran = op.op3.to_ugran();
                 self.regs.write_data(&mut self.tags, dst, op2 | op3)?;
             }
 
             OpKind::Or => {
                 let dst = reg(op.op1);
-                let op2 = self.regs.read_data(reg(op.op2))?;
-                let op3 = self.regs.read_data(reg(op.op3))?;
+                let op2: UGran = self.regs.read_data(reg(op.op2))?;
+                let op3: UGran = self.regs.read_data(reg(op.op3))?;
                 self.regs.write_data(&mut self.tags, dst, op2 | op3)?;
             }
 
             OpKind::AndI => {
                 let dst = reg(op.op1);
-                let op2 = self.regs.read_data(reg(op.op2))?;
-                let op3 = op.op3.to_ugran();
+                let op2: UGran = self.regs.read_data(reg(op.op2))?;
+                let op3: UGran = op.op3.to_ugran();
                 self.regs.write_data(&mut self.tags, dst, op2 & op3)?;
             }
 
             OpKind::And => {
                 let dst = reg(op.op1);
-                let op2 = self.regs.read_data(reg(op.op2))?;
-                let op3 = self.regs.read_data(reg(op.op3))?;
+                let op2: UGran = self.regs.read_data(reg(op.op2))?;
+                let op3: UGran = self.regs.read_data(reg(op.op3))?;
                 self.regs.write_data(&mut self.tags, dst, op2 & op3)?;
             }
 
             OpKind::SllI => {
                 let dst = reg(op.op1);
-                let val = self.regs.read_data(reg(op.op2))?;
-                let amount = op.op3.to_ugran();
+                let val: UGran = self.regs.read_data(reg(op.op2))?;
+                let amount: UGran = op.op3.to_ugran();
                 self.regs.write_data(&mut self.tags, dst, val << amount)?;
             }
 
             OpKind::Sll => {
                 let dst = reg(op.op1);
-                let val = self.regs.read_data(reg(op.op2))?;
-                let amount = self.regs.read_data(reg(op.op3))?;
+                let val: UGran = self.regs.read_data(reg(op.op2))?;
+                let amount: UGran = self.regs.read_data(reg(op.op3))?;
                 self.regs.write_data(&mut self.tags, dst, val << amount)?;
             }
 
             OpKind::SrlI => {
                 let dst = reg(op.op1);
-                let val = self.regs.read_data(reg(op.op2))?;
-                let amount = op.op3.to_ugran();
+                let val: UGran = self.regs.read_data(reg(op.op2))?;
+                let amount: UGran = op.op3.to_ugran();
                 self.regs.write_data(&mut self.tags, dst, val >> amount)?;
             }
 
             OpKind::Srl => {
                 let dst = reg(op.op1);
-                let val = self.regs.read_data(reg(op.op2))?;
-                let amount = self.regs.read_data(reg(op.op3))?;
+                let val: UGran = self.regs.read_data(reg(op.op2))?;
+                let amount: UGran = self.regs.read_data(reg(op.op3))?;
                 self.regs.write_data(&mut self.tags, dst, val >> amount)?;
             }
 
             OpKind::SraI => {
                 let dst = reg(op.op1);
-                let val = gran_sign(self.regs.read_data(reg(op.op2))?);
-                let amount = op.op3.to_ugran();
-                self.regs
-                    .write_data(&mut self.tags, dst, gran_unsign(val >> amount))?;
+                let val: SGran = self.regs.read_ty(&self.tags, reg(op.op2))?;
+                let amount: UGran = op.op3.to_ugran();
+                self.regs.write_ty(&mut self.tags, dst, val >> amount)?;
             }
 
             OpKind::Sra => {
                 let dst = reg(op.op1);
-                let val = gran_sign(self.regs.read_data(reg(op.op2))?);
-                let amount = self.regs.read_data(reg(op.op3))?;
-                self.regs
-                    .write_data(&mut self.tags, dst, gran_unsign(val >> amount))?;
+                let val: SGran = self.regs.read_ty(&self.tags, reg(op.op2))?;
+                let amount: UGran = self.regs.read_data(reg(op.op3))?;
+                self.regs.write_ty(&mut self.tags, dst, val >> amount)?;
             }
 
             OpKind::Jal => {
                 let ra_dst = reg(op.op1);
-                let offset = addr_sign(op.op2.to_ugran() as UAddr);
+                let offset: SAddr = addr_sign(op.op2.to_ugran() as UAddr);
                 self.regs.write(&mut self.tags, ra_dst, return_address)?;
                 return_address =
                     pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
@@ -341,18 +330,18 @@ impl Memory {
 
             OpKind::Jalr => {
                 let ra_dst = reg(op.op1);
-                let offset_reg = addr_sign(self.regs.read_data(reg(op.op2))? as UAddr);
-                let offset_imm = addr_sign(op.op3.to_ugran() as UAddr);
-                let offset = offset_reg.wrapping_add(offset_imm);
+                let offset_reg: SAddr = self.regs.read_ty(&self.tags, reg(op.op2))?;
+                let offset_imm: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
+                let offset: SAddr = offset_reg.wrapping_add(offset_imm);
                 self.regs.write(&mut self.tags, ra_dst, return_address)?;
                 return_address =
                     pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
             }
 
             OpKind::Beq => {
-                let cmp1 = self.regs.read_data(reg(op.op1))?;
-                let cmp2 = self.regs.read_data(reg(op.op2))?;
-                let offset = addr_sign(op.op3.to_ugran() as UAddr);
+                let cmp1: UGran = self.regs.read_data(reg(op.op1))?;
+                let cmp2: UGran = self.regs.read_data(reg(op.op2))?;
+                let offset: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 == cmp2 {
                     return_address =
                         pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
@@ -360,8 +349,8 @@ impl Memory {
             }
 
             OpKind::Bne => {
-                let cmp1 = self.regs.read_data(reg(op.op1))?;
-                let cmp2 = self.regs.read_data(reg(op.op2))?;
+                let cmp1: UGran = self.regs.read_data(reg(op.op1))?;
+                let cmp2: UGran = self.regs.read_data(reg(op.op2))?;
                 let offset = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 != cmp2 {
                     return_address =
@@ -370,9 +359,9 @@ impl Memory {
             }
 
             OpKind::Blts => {
-                let cmp1 = gran_sign(self.regs.read_data(reg(op.op1))?);
-                let cmp2 = gran_sign(self.regs.read_data(reg(op.op2))?);
-                let offset = addr_sign(op.op3.to_ugran() as UAddr);
+                let cmp1: SGran = self.regs.read_ty(&self.tags, reg(op.op1))?;
+                let cmp2: SGran = self.regs.read_ty(&self.tags, reg(op.op2))?;
+                let offset: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 < cmp2 {
                     return_address =
                         pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
@@ -380,9 +369,9 @@ impl Memory {
             }
 
             OpKind::Bges => {
-                let cmp1 = gran_sign(self.regs.read_data(reg(op.op1))?);
-                let cmp2 = gran_sign(self.regs.read_data(reg(op.op2))?);
-                let offset = addr_sign(op.op3.to_ugran() as UAddr);
+                let cmp1: SGran = self.regs.read_ty(&self.tags, reg(op.op1))?;
+                let cmp2: SGran = self.regs.read_ty(&self.tags, reg(op.op2))?;
+                let offset: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 >= cmp2 {
                     return_address =
                         pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
@@ -390,9 +379,9 @@ impl Memory {
             }
 
             OpKind::Bltu => {
-                let cmp1 = self.regs.read_data(reg(op.op1))?;
-                let cmp2 = self.regs.read_data(reg(op.op2))?;
-                let offset = addr_sign(op.op3.to_ugran() as UAddr);
+                let cmp1: UGran = self.regs.read_data(reg(op.op1))?;
+                let cmp2: UGran = self.regs.read_data(reg(op.op2))?;
+                let offset: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 < cmp2 {
                     return_address =
                         pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
@@ -400,9 +389,9 @@ impl Memory {
             }
 
             OpKind::Bgeu => {
-                let cmp1 = self.regs.read_data(reg(op.op1))?;
-                let cmp2 = self.regs.read_data(reg(op.op2))?;
-                let offset = addr_sign(op.op3.to_ugran() as UAddr);
+                let cmp1: UGran = self.regs.read_data(reg(op.op1))?;
+                let cmp2: UGran = self.regs.read_data(reg(op.op2))?;
+                let offset: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 >= cmp2 {
                     return_address =
                         pc.set_addr(pc.addr().offset(offset.wrapping_mul(Op::LAYOUT.size as _)));
@@ -410,8 +399,7 @@ impl Memory {
             }
 
             OpKind::Syscall => {
-                let kind = self.regs.read_data(Register::A2 as _)?;
-                let kind = SyscallKind::from_byte(kind as u8)?;
+                let kind: SyscallKind = self.regs.read_ty(&self.tags, Register::A2 as _)?;
 
                 let span = span!(Level::INFO, "syscall", kind = format_args!("{kind}"));
                 let _enter = span.enter();
@@ -426,11 +414,9 @@ impl Memory {
                     SyscallKind::Exit => return Err(Exception::ProcessExit),
 
                     SyscallKind::AllocInit => {
-                        let strategy =
-                            Strategy::from_byte(self.regs.read_data(Register::A3 as _)? as u8)?;
-                        let flags = InitFlags::from_bits_truncate(
-                            self.regs.read_data(Register::A4 as _)? as u8,
-                        );
+                        let strategy: Strategy =
+                            self.regs.read_ty(&self.tags, Register::A3 as _)?;
+                        let flags: InitFlags = self.regs.read_ty(&self.tags, Register::A4 as _)?;
                         let region = self.regs.read(&self.tags, Register::A5 as _)?;
                         tracing::trace!(
                             strategy = format_args!("{strategy:?}"),
@@ -456,7 +442,7 @@ impl Memory {
 
                     SyscallKind::AllocAlloc => {
                         let ator = self.regs.read(&self.tags, Register::A3 as _)?;
-                        let layout = Layout::from_ugran(self.regs.read_data(Register::A4 as _)?)?;
+                        let layout: Layout = self.regs.read_ty(&self.tags, Register::A4 as _)?;
                         tracing::trace!(
                             ator = format_args!("{ator:?}"),
                             layout = format_args!("{layout:?}"),
@@ -492,25 +478,10 @@ impl Memory {
                     SyscallKind::AllocStat => {
                         let ator = self.regs.read(&self.tags, Register::A3 as _)?;
                         tracing::trace!(ator = format_args!("{ator:?}"), "statting allocator");
-                        let stats_t = alloc::stat(ator, self)?;
-                        tracing::trace!(stats = format_args!("{stats_t:?}"), "statting ok");
-                        /* TODOO: see Ty trait todo for read/write to registers */
-                        let mut stats = (0 as UGran).to_le_bytes();
-                        let mut cur = 0;
-                        stats[cur..][..Strategy::LAYOUT.size as usize]
-                            .copy_from_slice(&stats_t.strategy.to_byte().to_le_bytes());
-                        cur += Strategy::LAYOUT.size as usize;
-                        stats[cur..][..InitFlags::LAYOUT.size as usize]
-                            .copy_from_slice(&stats_t.flags.bits().to_le_bytes());
-                        cur += InitFlags::LAYOUT.size as usize;
-                        stats[cur..][..UAddr::LAYOUT.size as usize]
-                            .copy_from_slice(&stats_t.bytes_free.to_le_bytes());
-                        //cur += UAddr::LAYOUT.size as usize;
-                        self.regs.write_data(
-                            &mut self.tags,
-                            Register::A0 as _,
-                            UGran::from_le_bytes(stats),
-                        )?;
+                        let stats = alloc::stat(ator, self)?;
+                        tracing::trace!(stats = format_args!("{stats:?}"), "statting ok");
+                        self.regs
+                            .write_ty(&mut self.tags, Register::A0 as _, stats)?;
                     }
                 }
             }

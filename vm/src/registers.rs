@@ -1,9 +1,10 @@
 use core::fmt;
 
+use crate::abi::{Layout, Ty};
 use crate::access::RegAccess;
-use crate::capability::{Capability, TaggedCapability};
+use crate::capability::{Address, Capability, TaggedCapability};
 use crate::exception::Exception;
-use crate::int::UGran;
+use crate::int::{UAddr, UGran, UGRAN_SIZE};
 use crate::mem::TagController;
 
 #[derive(Debug)]
@@ -31,17 +32,32 @@ impl Registers {
     }
 
     pub fn read_data(&self, reg: u8) -> Result<UGran, Exception> {
-        if Self::is_reg_valid(reg) {
-            if reg == Register::Zero as _ {
-                return Ok(0);
-            }
-            let idx = Self::reg_to_idx(reg);
-            Ok(self.regs[idx].to_ugran())
-        } else {
-            Err(Exception::InvalidRegAccess {
-                access: RegAccess { reg },
-            })
+        let access = RegAccess {
+            reg,
+            len: Register::LAYOUT.size,
+        };
+        access.check_reg()?;
+        debug_assert!(access.check_len().is_ok());
+        if reg == Register::Zero as _ {
+            return Ok(0);
         }
+        let idx = Self::reg_to_idx(reg);
+        Ok(self.regs[idx].to_ugran())
+    }
+
+    pub fn read_ty<T: Ty>(&self, tags: &TagController, reg: u8) -> Result<T, Exception> {
+        let layout = T::LAYOUT;
+        let access = RegAccess {
+            reg,
+            len: layout.size,
+        };
+        let data = self.read_data(reg)?.to_le_bytes();
+        access.check_len()?;
+        T::read(
+            &data[..access.len as usize],
+            Address(0),
+            tags.reg(reg).unwrap(),
+        )
     }
 
     pub fn write(
@@ -50,16 +66,16 @@ impl Registers {
         reg: u8,
         cap: TaggedCapability,
     ) -> Result<(), Exception> {
-        if Self::is_reg_valid(reg) {
-            let idx = Self::reg_to_idx(reg);
-            self.regs[idx] = cap.capability();
-            tags.write_reg(reg, cap.is_valid()).unwrap();
-            Ok(())
-        } else {
-            Err(Exception::InvalidRegAccess {
-                access: RegAccess { reg },
-            })
-        }
+        let access = RegAccess {
+            reg,
+            len: Register::LAYOUT.size,
+        };
+        access.check_reg()?;
+        debug_assert!(access.check_len().is_ok());
+        let idx = Self::reg_to_idx(reg);
+        self.regs[idx] = cap.capability();
+        tags.write_reg(reg, cap.is_valid()).unwrap();
+        Ok(())
     }
 
     pub fn write_data(
@@ -71,8 +87,34 @@ impl Registers {
         self.write(tags, reg, TaggedCapability::from_ugran(val))
     }
 
+    pub fn write_ty<T: Ty>(
+        &mut self,
+        tags: &mut TagController,
+        reg: u8,
+        val: T,
+    ) -> Result<(), Exception> {
+        let layout = T::LAYOUT;
+        let mut data = [0; UGRAN_SIZE as _];
+        let access = RegAccess {
+            reg,
+            len: layout.size,
+        };
+        access.check()?;
+        val.write(
+            &mut data[..access.len as usize],
+            Address(0),
+            tags.reg_mut(reg).unwrap(),
+        )?;
+        self.regs[Self::reg_to_idx(reg)] = Capability::from_ugran(UGran::from_le_bytes(data));
+        Ok(())
+    }
+
     pub const fn is_reg_valid(reg: u8) -> bool {
         (reg & Self::MASK) == reg
+    }
+
+    pub const fn is_len_valid(len: UAddr) -> bool {
+        len <= Register::LAYOUT.size
     }
 }
 
@@ -121,6 +163,10 @@ pub enum Register {
 
     // reserved, but currently used as magic place to find parent allocator
     Z0,
+}
+
+impl Register {
+    pub const LAYOUT: Layout = UGran::LAYOUT;
 }
 
 impl fmt::Display for Register {

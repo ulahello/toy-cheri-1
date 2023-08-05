@@ -1,9 +1,10 @@
+use bitvec::slice::BitSlice;
+
 use super::{AllocErr, AllocErrKind, Header, Stats};
-use crate::abi::{Fields, Layout, Ty};
-use crate::capability::TaggedCapability;
+use crate::abi::{self, FieldsMut, FieldsRef, Layout, Ty};
+use crate::capability::{Address, TaggedCapability};
 use crate::exception::Exception;
 use crate::int::UAddr;
-use crate::mem::Memory;
 
 #[derive(Clone, Copy, Debug)]
 pub(super) struct BumpAlloc {
@@ -64,20 +65,23 @@ impl BumpAlloc {
 }
 
 impl Ty for BumpAlloc {
-    const LAYOUT: Layout = Fields::layout(Self::FIELDS);
+    const LAYOUT: Layout = abi::layout(Self::FIELDS);
 
-    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        let mut fields = Fields::new(src, Self::FIELDS);
-        let inner = fields.next().unwrap();
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        let mut fields = FieldsRef::new(src, addr, valid, Self::FIELDS);
         Ok(Self {
-            inner: TaggedCapability::read_from_mem(inner, mem)?,
+            inner: fields.read_next::<TaggedCapability>()?,
         })
     }
 
-    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        let mut fields = Fields::new(dst, Self::FIELDS);
-        let inner = fields.next().unwrap();
-        self.inner.write_to_mem(inner, mem)?;
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        let mut fields = FieldsMut::new(dst, addr, valid, Self::FIELDS);
+        fields.write_next(self.inner)?;
         Ok(())
     }
 }

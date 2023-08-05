@@ -1,5 +1,9 @@
+use bitvec::slice::BitSlice;
+
 use core::fmt;
 
+use crate::abi::{Layout, Ty};
+use crate::capability::Address;
 use crate::exception::Exception;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,7 +40,7 @@ pub enum SyscallKind {
     AllocFreeAll,
 
     /// Request [`Stats`](crate::alloc::Stats) on the allocator at register
-    /// `a3`.
+    /// `a3`. On success, the `Stats` are written to register `a0`.
     AllocStat,
 }
 
@@ -57,6 +61,23 @@ impl SyscallKind {
             6 => Ok(Self::AllocStat),
             _ => Err(Exception::InvalidSyscall { byte }),
         }
+    }
+}
+
+impl Ty for SyscallKind {
+    const LAYOUT: Layout = u8::LAYOUT;
+
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        Self::from_byte(u8::read(src, addr, valid)?)
+    }
+
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        self.to_byte().write(dst, addr, valid)
     }
 }
 

@@ -2,6 +2,7 @@ use core::fmt;
 
 use crate::abi::Align;
 use crate::capability::TaggedCapability;
+use crate::exception::Exception;
 use crate::int::UAddr;
 use crate::registers::Registers;
 
@@ -55,10 +56,37 @@ impl fmt::Display for MemAccessKind {
 #[derive(Clone, Copy, Debug)]
 pub struct RegAccess {
     pub reg: u8,
+    pub len: UAddr,
 }
 
 impl RegAccess {
     pub const fn is_reg_valid(&self) -> bool {
         Registers::is_reg_valid(self.reg)
+    }
+
+    pub const fn is_len_valid(&self) -> bool {
+        Registers::is_len_valid(self.len)
+    }
+
+    pub const fn check_reg(self) -> Result<(), Exception> {
+        if self.is_reg_valid() {
+            Ok(())
+        } else {
+            Err(Exception::InvalidRegAccess { access: self })
+        }
+    }
+
+    pub const fn check_len(self) -> Result<(), Exception> {
+        if self.is_len_valid() {
+            Ok(())
+        } else {
+            Err(Exception::InvalidRegAccess { access: self })
+        }
+    }
+
+    pub fn check(&self) -> Result<(), Exception> {
+        self.check_reg()?;
+        self.check_len()?;
+        Ok(())
     }
 }

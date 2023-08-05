@@ -102,11 +102,24 @@ impl fmt::Display for Exception {
 
             Self::InvalidRegAccess { access } => {
                 write!(f, "invalid access of register {reg}: ", reg = access.reg)?;
-                if access.is_reg_valid() {
+                if !access.is_reg_valid() {
                     write!(f, "no such register")?;
-                } else {
-                    unreachable!("valid register access is not exception");
+                    return Ok(());
                 }
+                if !access.is_len_valid() {
+                    write!(
+                        f,
+                        "access of {} byte{s} exceeds register size",
+                        access.len,
+                        s = if access.len == 1 { "" } else { "s" },
+                    )?;
+                    return Ok(());
+                }
+                assert!(
+                    access.check().is_ok(),
+                    "dev forgot to handle case why this access is invalid"
+                );
+                unreachable!("valid register access is not exception");
             }
 
             Self::AllocErr { err } => {

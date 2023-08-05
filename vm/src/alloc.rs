@@ -1,9 +1,10 @@
 mod bump;
 
 use bitflags::bitflags;
+use bitvec::slice::BitSlice;
 
-use crate::abi::{Align, Fields, Layout, Ty};
-use crate::capability::TaggedCapability;
+use crate::abi::{self, Align, FieldsMut, FieldsRef, Layout, Ty};
+use crate::capability::{Address, TaggedCapability};
 use crate::exception::Exception;
 use crate::int::{UAddr, UNINIT_BYTE};
 use crate::mem::Memory;
@@ -38,12 +39,17 @@ impl Ty for Strategy {
         align: Align::new(1).unwrap(),
     };
 
-    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        Self::from_byte(mem.read(src)?)
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        Self::from_byte(u8::read(src, addr, valid)?)
     }
 
-    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        mem.write(dst, self.to_byte())
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        self.to_byte().write(dst, addr, valid)
     }
 }
 
@@ -61,15 +67,22 @@ impl Ty for InitFlags {
         align: Align::new(1).unwrap(),
     };
 
-    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        let bits: u8 = mem.read(src)?;
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        let bits = u8::read(src, addr, valid)?;
+        // TODO: if perms is infallible this should also be infallible
         let flags =
             Self::from_bits(bits).ok_or(Exception::InvalidAllocInitFlags { flags: bits })?;
         Ok(flags)
     }
 
-    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        mem.write::<u8>(dst, self.bits())
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        let bits: u8 = self.bits();
+        bits.write(dst, addr, valid)
     }
 }
 
@@ -85,28 +98,27 @@ impl Stats {
 }
 
 impl Ty for Stats {
-    const LAYOUT: Layout = Fields::layout(Self::FIELDS);
+    const LAYOUT: Layout = abi::layout(Self::FIELDS);
 
-    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        let mut fields = Fields::new(src, Self::FIELDS);
-        let strategy = fields.next().unwrap();
-        let flags = fields.next().unwrap();
-        let bytes_free = fields.next().unwrap();
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        let mut fields = FieldsRef::new(src, addr, valid, Self::FIELDS);
         Ok(Self {
-            strategy: Strategy::read_from_mem(strategy, mem)?,
-            flags: InitFlags::read_from_mem(flags, mem)?,
-            bytes_free: UAddr::read_from_mem(bytes_free, mem)?,
+            strategy: fields.read_next::<Strategy>()?,
+            flags: fields.read_next::<InitFlags>()?,
+            bytes_free: fields.read_next::<UAddr>()?,
         })
     }
 
-    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        let mut fields = Fields::new(dst, Self::FIELDS);
-        let strategy = fields.next().unwrap();
-        let flags = fields.next().unwrap();
-        let bytes_free = fields.next().unwrap();
-        self.strategy.write_to_mem(strategy, mem)?;
-        self.flags.write_to_mem(flags, mem)?;
-        self.bytes_free.write_to_mem(bytes_free, mem)?;
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        let mut fields = FieldsMut::new(dst, addr, valid, Self::FIELDS);
+        fields.write_next(self.strategy)?;
+        fields.write_next(self.flags)?;
+        fields.write_next(self.bytes_free)?;
         Ok(())
     }
 }
@@ -144,24 +156,25 @@ impl Header {
 }
 
 impl Ty for Header {
-    const LAYOUT: Layout = Fields::layout(Self::FIELDS);
+    const LAYOUT: Layout = abi::layout(Self::FIELDS);
 
-    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        let mut fields = Fields::new(src, Self::FIELDS);
-        let strat = fields.next().unwrap();
-        let flags = fields.next().unwrap();
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        let mut fields = FieldsRef::new(src, addr, valid, Self::FIELDS);
         Ok(Self {
-            strat: Strategy::read_from_mem(strat, mem)?,
-            flags: InitFlags::read_from_mem(flags, mem)?,
+            strat: fields.read_next::<Strategy>()?,
+            flags: fields.read_next::<InitFlags>()?,
         })
     }
 
-    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        let mut fields = Fields::new(dst, Self::FIELDS);
-        let strat = fields.next().unwrap();
-        let flags = fields.next().unwrap();
-        self.strat.write_to_mem(strat, mem)?;
-        self.flags.write_to_mem(flags, mem)?;
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        let mut fields = FieldsMut::new(dst, addr, valid, Self::FIELDS);
+        fields.write_next(self.strat)?;
+        fields.write_next(self.flags)?;
         Ok(())
     }
 }

@@ -1,9 +1,10 @@
+use bitvec::slice::BitSlice;
+
 use core::fmt;
 
-use crate::abi::{Align, Fields, Layout, Ty};
-use crate::capability::TaggedCapability;
+use crate::abi::{self, Align, FieldsMut, FieldsRef, Layout, Ty};
+use crate::capability::{Address, TaggedCapability};
 use crate::exception::Exception;
-use crate::mem::Memory;
 
 // TODO: document which operations operate on capabilities
 // TODO: document that branch instructions truncate to SAddr offsets
@@ -353,12 +354,17 @@ impl Ty for OpKind {
         align: Align::new(1).unwrap(),
     };
 
-    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        Self::from_byte(mem.read(src)?)
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        Self::from_byte(u8::read(src, addr, valid)?)
     }
 
-    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        mem.write(dst, self.to_byte())
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        self.to_byte().write(dst, addr, valid)
     }
 }
 
@@ -469,32 +475,29 @@ impl Op {
 }
 
 impl Ty for Op {
-    const LAYOUT: Layout = Fields::layout(Self::FIELDS);
+    const LAYOUT: Layout = abi::layout(Self::FIELDS);
 
-    fn read_from_mem(src: TaggedCapability, mem: &Memory) -> Result<Self, Exception> {
-        let mut fields = Fields::new(src, Self::FIELDS);
-        let kind_c = fields.next().unwrap();
-        let op1_c = fields.next().unwrap();
-        let op2_c = fields.next().unwrap();
-        let op3_c = fields.next().unwrap();
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        let mut fields = FieldsRef::new(src, addr, valid, Self::FIELDS);
         Ok(Self {
-            kind: OpKind::read_from_mem(kind_c, mem)?,
-            op1: TaggedCapability::read_from_mem(op1_c, mem)?,
-            op2: TaggedCapability::read_from_mem(op2_c, mem)?,
-            op3: TaggedCapability::read_from_mem(op3_c, mem)?,
+            kind: fields.read_next::<OpKind>()?,
+            op1: fields.read_next::<TaggedCapability>()?,
+            op2: fields.read_next::<TaggedCapability>()?,
+            op3: fields.read_next::<TaggedCapability>()?,
         })
     }
 
-    fn write_to_mem(&self, dst: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-        let mut fields = Fields::new(dst, Self::FIELDS);
-        let kind_c = fields.next().unwrap();
-        let op1_c = fields.next().unwrap();
-        let op2_c = fields.next().unwrap();
-        let op3_c = fields.next().unwrap();
-        self.kind.write_to_mem(kind_c, mem)?;
-        self.op1.write_to_mem(op1_c, mem)?;
-        self.op2.write_to_mem(op2_c, mem)?;
-        self.op3.write_to_mem(op3_c, mem)?;
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        let mut fields = FieldsMut::new(dst, addr, valid, Self::FIELDS);
+        fields.write_next(self.kind)?;
+        fields.write_next(self.op1)?;
+        fields.write_next(self.op2)?;
+        fields.write_next(self.op3)?;
         Ok(())
     }
 }
