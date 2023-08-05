@@ -33,7 +33,8 @@ impl Ty for Align {
     const LAYOUT: Layout = u8::LAYOUT;
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        Ok(Self(u8::read(src, addr, valid)?))
+        let repr = u8::read(src, addr, valid)?;
+        Ok(Self(repr))
     }
 
     fn write(
@@ -42,7 +43,8 @@ impl Ty for Align {
         addr: Address,
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
-        self.0.write(dst, addr, valid)
+        let repr: u8 = self.0;
+        repr.write(dst, addr, valid)
     }
 }
 
