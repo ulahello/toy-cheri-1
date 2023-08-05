@@ -186,64 +186,55 @@ pub enum OpKind {
     /// Offset the program counter address by immediate `op2` and store the
     /// return address in register `op1`.
     ///
-    /// - All computations leading to the offset operate on `SAddr` values.
-    /// - Offset is computed in multiples of `Op::LAYOUT.size`.
+    /// All computations leading to the offset operate on `SAddr` values.
     Jal,
 
-    /// Offset the program counter address by the sum of immediate `op3` and
-    /// register `op2` and store the return address in register `op1`.
-    ///
-    /// - All computations leading to the offset operate on `SAddr` values.
-    /// - Offset is computed in multiples of `Op::LAYOUT.size`.
+    /// Set the program counter address to the sum of `SAddr` immediate `op3`
+    /// and `UAddr` register `op2` and store the return address in register
+    /// `op1`.
     Jalr,
 
     /// Offset the program counter address by immediate `op3` if the values of
     /// registers `op1` and `op2` are equal.
     ///
-    /// - All computations leading to the offset operate on `SAddr` values.
-    /// - Offset is computed in multiples of `Op::LAYOUT.size`.
+    /// All computations leading to the offset operate on `SAddr` values.
     Beq,
 
     /// Offset the program counter address by immediate `op3` if the values of
     /// registers `op1` and `op2` are not equal.
     ///
-    /// - All computations leading to the offset wrap upon overflow and operate
+    /// All computations leading to the offset wrap upon overflow and operate
     /// on `SAddr` values.
-    /// - Offset is computed in multiples of `Op::LAYOUT.size`.
     Bne,
 
     /// Offset the program counter address by immediate `op3` if the value of
     /// registers `op1` is less `op2`, using signed comparison.
     ///
-    /// - All computations leading to the offset wrap upon overflow and operate
+    /// All computations leading to the offset wrap upon overflow and operate
     /// on `SAddr` values.
-    /// - Offset is computed in multiples of `Op::LAYOUT.size`.
     Blts,
 
     /// Offset the program counter address by immediate `op3` if the value of
     /// registers `op1` is greater than or equal to `op2`, using signed
     /// comparison.
     ///
-    /// - All computations leading to the offset wrap upon overflow and operate
+    /// All computations leading to the offset wrap upon overflow and operate
     /// on `SAddr` values.
-    /// - Offset is computed in multiples of `Op::LAYOUT.size`.
     Bges,
 
     /// Offset the program counter address by immediate `op3` if value of
     /// registers `op1` is less than `op2`, using unsigned comparison.
     ///
-    /// - All computations leading to the offset wrap upon overflow and operate
+    /// All computations leading to the offset wrap upon overflow and operate
     /// on `SAddr` values.
-    /// - Offset is computed in multiples of `Op::LAYOUT.size`.
     Bltu,
 
     /// Offset the program counter address by immediate `op3` if the value of
     /// registers `op1` is greater than or equal to `op2`, using unsigned
     /// comparison.
     ///
-    /// - All computations leading to the offset wrap upon overflow and operate
+    /// All computations leading to the offset wrap upon overflow and operate
     /// on `SAddr` values.
-    /// - Offset is computed in multiples of `Op::LAYOUT.size`.
     Bgeu,
 
     /// Perform a system call. The [kind](crate::syscall::SyscallKind) is

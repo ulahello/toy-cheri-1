@@ -1,3 +1,4 @@
+use fruticose_vm::abi::Ty;
 use fruticose_vm::capability::TaggedCapability;
 use fruticose_vm::int::{gran_unsign, SAddr, SGran};
 use fruticose_vm::op::Op;
@@ -67,9 +68,13 @@ impl<'s> Parser2<'s> {
                                     };
 
                                     let label_op_idx: SAddr = SAddr::try_from(label.op_idx)
-                                        .map_err(|_| overflow_err.clone())?;
+                                        .ok()
+                                        .and_then(|idx| idx.checked_mul(Op::LAYOUT.size as _))
+                                        .ok_or_else(|| overflow_err.clone())?;
                                     let cur_op_idx: SAddr = SAddr::try_from(cur_op_idx)
-                                        .map_err(|_| overflow_err.clone())?;
+                                        .ok()
+                                        .and_then(|idx| idx.checked_mul(Op::LAYOUT.size as _))
+                                        .ok_or_else(|| overflow_err.clone())?;
                                     let offset: SAddr =
                                         label_op_idx.checked_sub(cur_op_idx).ok_or(overflow_err)?;
                                     TaggedCapability::from_ugran(gran_unsign(offset as SGran))
