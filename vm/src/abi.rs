@@ -8,9 +8,8 @@ use crate::capability::Address;
 use crate::exception::Exception;
 use crate::int::UAddr;
 
-// TODO: more efficient representation
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Align(UAddr /* must be nonzero power of two */);
+pub struct Align(u8);
 
 impl Align {
     pub const MIN: Self = Self::new(1).unwrap();
@@ -19,14 +18,14 @@ impl Align {
         // power of two implies nonzero
         if align.is_power_of_two() {
             debug_assert!(align != 0);
-            Some(Self(align))
+            Some(Self(align.ilog2() as _))
         } else {
             None
         }
     }
 
     pub const fn get(self) -> UAddr {
-        self.0
+        (2 as UAddr).pow(self.0 as _)
     }
 }
 

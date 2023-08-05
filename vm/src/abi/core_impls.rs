@@ -38,11 +38,10 @@ impl Layout {
 }
 
 impl Ty for Align {
-    const LAYOUT: Layout = UAddr::LAYOUT;
+    const LAYOUT: Layout = u8::LAYOUT;
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        let align = UAddr::read(src, addr, valid)?;
-        Self::new(align).ok_or(Exception::InvalidAlign { align })
+        Ok(Self(u8::read(src, addr, valid)?))
     }
 
     fn write(
@@ -51,7 +50,7 @@ impl Ty for Align {
         addr: Address,
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
-        self.get().write(dst, addr, valid)
+        self.0.write(dst, addr, valid)
     }
 }
 
