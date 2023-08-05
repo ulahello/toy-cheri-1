@@ -8,7 +8,7 @@ use crate::capability::Address;
 use crate::exception::Exception;
 use crate::int::UAddr;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Align(u8);
 
 impl Align {
@@ -45,6 +45,12 @@ impl Ty for Align {
     ) -> Result<(), Exception> {
         let repr: u8 = self.0;
         repr.write(dst, addr, valid)
+    }
+}
+
+impl fmt::Debug for Align {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Align").field(&self.get()).finish()
     }
 }
 
