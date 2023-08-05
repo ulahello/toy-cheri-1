@@ -338,8 +338,8 @@ impl Memory {
                 let ra_dst = reg(op.op1);
                 let base: UAddr = self.regs.read_ty(&self.tags, reg(op.op2))?;
                 let offset_imm: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
-                return_address = pc.set_addr(Address(base).offset(offset_imm));
                 self.regs.write(&mut self.tags, ra_dst, return_address)?;
+                return_address = pc.set_addr(Address(base).offset(offset_imm));
             }
 
             OpKind::Beq => {
