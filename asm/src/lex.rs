@@ -102,6 +102,7 @@ impl<'s> Lexer<'s> {
             "cgetperm" => TokenTyp::Op(OpKind::CGetPerm),
             "csetperm" => TokenTyp::Op(OpKind::CSetPerm),
             "cgetvalid" => TokenTyp::Op(OpKind::CGetValid),
+            "cpy" => TokenTyp::Op(OpKind::Cpy),
             "loadi" => TokenTyp::Op(OpKind::LoadI),
             "loadu8" => TokenTyp::Op(OpKind::LoadU8),
             "loadu16" => TokenTyp::Op(OpKind::LoadU16),

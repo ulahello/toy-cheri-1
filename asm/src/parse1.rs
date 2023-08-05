@@ -152,6 +152,7 @@ pub const fn type_signature(op: OpKind) -> [Option<OperandType>; 3] {
         OpKind::CGetPerm => sig(op, [Register, Register]),
         OpKind::CSetPerm => sig(op, [Register, Register]),
         OpKind::CGetValid => sig(op, [Register, Register]),
+        OpKind::Cpy => sig(op, [Register, Register]),
         OpKind::LoadI => sig(op, [Register, Immediate]),
         OpKind::LoadU8 => sig(op, [Register, Register]),
         OpKind::LoadU16 => sig(op, [Register, Register]),

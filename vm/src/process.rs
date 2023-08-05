@@ -94,6 +94,13 @@ impl Memory {
                 self.regs.write_ty(&mut self.tags, dst, tcap.is_valid())?;
             }
 
+            OpKind::Cpy => {
+                let dst = reg(op.op1);
+                let src = reg(op.op2);
+                let val = self.regs.read(&self.tags, src)?;
+                self.regs.write(&mut self.tags, dst, val)?;
+            }
+
             OpKind::LoadI => {
                 let dst = reg(op.op1);
                 let imm = op.op2;
