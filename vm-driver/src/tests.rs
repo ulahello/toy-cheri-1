@@ -1,6 +1,8 @@
 mod exec {
     use fruticose_asm::parse1::ParseErr;
     use fruticose_asm::parse2::Parser2;
+    use fruticose_vm::abi::Ty;
+    use fruticose_vm::alloc;
     use fruticose_vm::capability::TaggedCapability;
     use fruticose_vm::exception::Exception;
     use fruticose_vm::mem::Memory;
@@ -65,5 +67,18 @@ mod exec {
         drop(ops);
         exec(&mut mem).unwrap();
         expect_in_reg(&mut mem, Register::T0, TaggedCapability::from_ugran(53));
+    }
+
+    #[test]
+    fn invalidate_cap() -> Result<(), Exception> {
+        let mut mem = Memory::new(32, [].iter()).unwrap();
+        let root_alloc = mem.regs.read(&mem.tags, Register::Z0 as _)?;
+        let ation = alloc::alloc(root_alloc, TaggedCapability::LAYOUT, &mut mem)?;
+        mem.write(ation, ation)?;
+        let expanded = ation.set_bounds(ation.start(), ation.endb().add(1));
+        mem.write(ation, expanded)?;
+        let result: TaggedCapability = mem.read(ation)?;
+        assert!(!result.is_valid());
+        Ok(())
     }
 }
