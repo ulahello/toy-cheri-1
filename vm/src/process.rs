@@ -103,35 +103,35 @@ impl Memory {
             OpKind::LoadU8 => {
                 let dst = reg(op.op1);
                 let src = reg(op.op2);
-                let val = self.regs.read_data(src)? as u8;
+                let val: u8 = self.regs.read_data(src)? as _;
                 self.regs.write_data(&mut self.tags, dst, val.into())?;
             }
 
             OpKind::LoadU16 => {
                 let dst = reg(op.op1);
                 let src = reg(op.op2);
-                let val = self.regs.read_data(src)? as u16;
+                let val: u16 = self.regs.read_data(src)? as _;
                 self.regs.write_data(&mut self.tags, dst, val.into())?;
             }
 
             OpKind::LoadU32 => {
                 let dst = reg(op.op1);
                 let src = reg(op.op2);
-                let val = self.regs.read_data(src)? as u32;
+                let val: u32 = self.regs.read_data(src)? as _;
                 self.regs.write_data(&mut self.tags, dst, val.into())?;
             }
 
             OpKind::LoadU64 => {
                 let dst = reg(op.op1);
                 let src = reg(op.op2);
-                let val = self.regs.read_data(src)? as u64;
+                let val: u64 = self.regs.read_data(src)? as _;
                 self.regs.write_data(&mut self.tags, dst, val.into())?;
             }
 
             OpKind::LoadU128 => {
                 let dst = reg(op.op1);
                 let src = reg(op.op2);
-                let val = self.regs.read_data(src)?;
+                let val: u128 = self.regs.read_data(src)? as _;
                 self.regs.write_data(&mut self.tags, dst, val)?;
             }
 
