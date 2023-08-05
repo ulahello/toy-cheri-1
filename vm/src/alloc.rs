@@ -68,11 +68,7 @@ impl Ty for InitFlags {
     };
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        let bits = u8::read(src, addr, valid)?;
-        // TODO: if perms is infallible this should also be infallible
-        let flags =
-            Self::from_bits(bits).ok_or(Exception::InvalidAllocInitFlags { flags: bits })?;
-        Ok(flags)
+        Ok(Self::from_bits_truncate(u8::read(src, addr, valid)?))
     }
 
     fn write(
@@ -81,8 +77,8 @@ impl Ty for InitFlags {
         addr: Address,
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
-        let bits: u8 = self.bits();
-        bits.write(dst, addr, valid)
+        let repr: u8 = self.bits();
+        repr.write(dst, addr, valid)
     }
 }
 
