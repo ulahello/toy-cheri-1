@@ -216,12 +216,8 @@ impl FieldsLogic<'_> {
             // 2.next_multiple_of_two() == 2, so add 1 to always go up
             cur_offset = (cur_offset + 1).next_power_of_two();
         }
-
         let field_offset = cur_offset;
-
-        // bamf out
-        cur_offset += field.size;
-
+        cur_offset += field.size; // bamf out
         FieldStep {
             field_offset,
             cur_offset,
