@@ -18,6 +18,7 @@ impl Align {
     pub const fn new(align: UAddr) -> Option<Self> {
         // power of two implies nonzero
         if align.is_power_of_two() {
+            debug_assert!(align != 0);
             Some(Self(align))
         } else {
             None
