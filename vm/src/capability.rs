@@ -117,8 +117,7 @@ pub struct Granule(pub UAddr);
 
 impl Granule {
     pub const fn addr(self) -> Address {
-        // TODO: overflow
-        Address(self.0 * UGRAN_SIZE as UAddr)
+        Address(self.0.checked_add(UGRAN_SIZE as UAddr).unwrap())
     }
 }
 
