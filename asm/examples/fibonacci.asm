@@ -1,6 +1,6 @@
 _start:
 	; TODO: why does it raise invalid operation when n is too high?
-	; loadi a2, 20 ; uncomment this to run outside of testing framework
+	; loadi a2, 10 ; uncomment this to run outside of testing framework
 	jal ra, fib
 	jal zero, exit
 
