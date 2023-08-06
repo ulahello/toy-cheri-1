@@ -1,7 +1,7 @@
 use bitvec::slice::BitSlice;
 
 use super::{AllocErr, AllocErrKind, Header, Stats};
-use crate::abi::{self, FieldsMut, FieldsRef, Layout, Ty};
+use crate::abi::{self, Layout, StructMut, StructRef, Ty};
 use crate::capability::{Address, TaggedCapability};
 use crate::exception::Exception;
 use crate::int::UAddr;
@@ -68,7 +68,7 @@ impl Ty for BumpAlloc {
     const LAYOUT: Layout = abi::layout(Self::FIELDS);
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        let mut fields = FieldsRef::new(src, addr, valid, Self::FIELDS);
+        let mut fields = StructRef::new(src, addr, valid, Self::FIELDS);
         Ok(Self {
             inner: fields.read_next::<TaggedCapability>()?,
         })
@@ -80,7 +80,7 @@ impl Ty for BumpAlloc {
         addr: Address,
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
-        let mut fields = FieldsMut::new(dst, addr, valid, Self::FIELDS);
+        let mut fields = StructMut::new(dst, addr, valid, Self::FIELDS);
         fields.write_next(self.inner)?;
         Ok(())
     }

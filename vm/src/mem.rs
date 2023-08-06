@@ -5,7 +5,7 @@ use bitvec::order::Lsb0;
 use bitvec::slice::BitSlice;
 use tracing::{span, Level};
 
-use crate::abi::{Align, FieldsLogic, Layout, Ty};
+use crate::abi::{self, Align, Layout, Ty};
 use crate::access::MemAccessKind;
 use crate::alloc::{self, InitFlags, Strategy};
 use crate::capability::{Address, Capability, Granule, Permissions, TaggedCapability};
@@ -258,13 +258,13 @@ impl TagController {
     pub fn grans(&self, start: Address, size: UAddr) -> Option<&BitSlice<u8>> {
         self.mem
             .get(Self::gran_to_idx(start.gran())?..)
-            .and_then(|slice| slice.get(..=FieldsLogic::gran_span(start, size)))
+            .and_then(|slice| slice.get(..=abi::gran_span(start, size)))
     }
 
     pub fn grans_mut(&mut self, start: Address, size: UAddr) -> Option<&mut BitSlice<u8>> {
         self.mem
             .get_mut(Self::gran_to_idx(start.gran())?..)
-            .and_then(|slice| slice.get_mut(..=FieldsLogic::gran_span(start, size)))
+            .and_then(|slice| slice.get_mut(..=abi::gran_span(start, size)))
     }
 
     pub fn reg(&self, reg: u8) -> Option<&BitSlice<u8>> {

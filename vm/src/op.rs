@@ -2,7 +2,7 @@ use bitvec::slice::BitSlice;
 
 use core::fmt;
 
-use crate::abi::{self, Align, FieldsMut, FieldsRef, Layout, Ty};
+use crate::abi::{self, Align, Layout, StructMut, StructRef, Ty};
 use crate::capability::{Address, TaggedCapability};
 use crate::exception::Exception;
 
@@ -463,7 +463,7 @@ impl Ty for Op {
     const LAYOUT: Layout = abi::layout(Self::FIELDS);
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        let mut fields = FieldsRef::new(src, addr, valid, Self::FIELDS);
+        let mut fields = StructRef::new(src, addr, valid, Self::FIELDS);
         Ok(Self {
             kind: fields.read_next::<OpKind>()?,
             op1: fields.read_next::<TaggedCapability>()?,
@@ -478,7 +478,7 @@ impl Ty for Op {
         addr: Address,
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
-        let mut fields = FieldsMut::new(dst, addr, valid, Self::FIELDS);
+        let mut fields = StructMut::new(dst, addr, valid, Self::FIELDS);
         fields.write_next(self.kind)?;
         fields.write_next(self.op1)?;
         fields.write_next(self.op2)?;

@@ -3,7 +3,7 @@ mod bump;
 use bitflags::bitflags;
 use bitvec::slice::BitSlice;
 
-use crate::abi::{self, Align, FieldsMut, FieldsRef, Layout, Ty};
+use crate::abi::{self, Align, CustomFields, Layout, StructMut, StructRef, Ty};
 use crate::capability::{Address, TaggedCapability};
 use crate::exception::Exception;
 use crate::int::{UAddr, UNINIT_BYTE};
@@ -97,7 +97,7 @@ impl Ty for Stats {
     const LAYOUT: Layout = abi::layout(Self::FIELDS);
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        let mut fields = FieldsRef::new(src, addr, valid, Self::FIELDS);
+        let mut fields = StructRef::new(src, addr, valid, Self::FIELDS);
         Ok(Self {
             strategy: fields.read_next::<Strategy>()?,
             flags: fields.read_next::<InitFlags>()?,
@@ -111,7 +111,7 @@ impl Ty for Stats {
         addr: Address,
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
-        let mut fields = FieldsMut::new(dst, addr, valid, Self::FIELDS);
+        let mut fields = StructMut::new(dst, addr, valid, Self::FIELDS);
         fields.write_next(self.strategy)?;
         fields.write_next(self.flags)?;
         fields.write_next(self.bytes_free)?;
@@ -155,7 +155,7 @@ impl Ty for Header {
     const LAYOUT: Layout = abi::layout(Self::FIELDS);
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        let mut fields = FieldsRef::new(src, addr, valid, Self::FIELDS);
+        let mut fields = StructRef::new(src, addr, valid, Self::FIELDS);
         Ok(Self {
             strat: fields.read_next::<Strategy>()?,
             flags: fields.read_next::<InitFlags>()?,
@@ -168,7 +168,7 @@ impl Ty for Header {
         addr: Address,
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
-        let mut fields = FieldsMut::new(dst, addr, valid, Self::FIELDS);
+        let mut fields = StructMut::new(dst, addr, valid, Self::FIELDS);
         fields.write_next(self.strat)?;
         fields.write_next(self.flags)?;
         Ok(())
@@ -183,7 +183,7 @@ impl Ty for Header {
 pub fn init(
     strat: Strategy,
     flags: InitFlags,
-    mut region: TaggedCapability,
+    region: TaggedCapability,
     mem: &mut Memory,
 ) -> Result<TaggedCapability, Exception> {
     /* NOTE: invalidate all capabilities matching 'region' before returning to
@@ -191,24 +191,18 @@ pub fn init(
      * allocator */
     revoke::by_bounds(mem, region.start(), region.endb())?;
 
+    let region = region.set_addr(region.start()); // reset address to region start
+    let mut fields = CustomFields::new(region);
     let header = Header { strat, flags };
-    region = region.set_addr(region.start());
-    let mut ret = region;
-    mem.write(region, header)?;
-    region = region.set_addr(region.addr().add(Header::LAYOUT.size));
-    let ator_cap = match strat {
+    fields.write_next(header, mem)?;
+    match strat {
         Strategy::Bump => {
-            region = region.set_addr(region.addr().align_to(BumpAlloc::LAYOUT.align));
-            let ator_cap =
-                region.set_bounds(region.addr(), region.addr().add(BumpAlloc::LAYOUT.size));
-            region = region.set_bounds(ator_cap.endb(), region.endb());
-            let ator = BumpAlloc::new(region);
-            mem.write(ator_cap, ator)?;
-            ator_cap
+            let ator_cap = fields.peek::<BumpAlloc>();
+            let ator = BumpAlloc::new(region.set_bounds(ator_cap.endb(), region.endb()));
+            fields.write_next(ator, mem)?;
         }
-    };
-    ret = ret.set_bounds(ret.start(), ator_cap.endb());
-    Ok(ret)
+    }
+    Ok(region)
 }
 
 /// De-initializes an allocator.
@@ -221,7 +215,7 @@ pub fn deinit(ator: TaggedCapability, mem: &mut Memory) -> Result<TaggedCapabili
 }
 
 pub fn alloc(
-    mut ator: TaggedCapability,
+    ator: TaggedCapability,
     layout: Layout,
     mem: &mut Memory,
 ) -> Result<TaggedCapability, Exception> {
@@ -229,14 +223,14 @@ pub fn alloc(
      * since being returned by super::init. until capabilities can be sealed
      * (and the immutability of ator is guaranteed), this function is optimistic
      * and undermines everything :) */
-    let header: Header = mem.read(ator)?;
-    ator = ator.set_addr(ator.addr().add(Header::LAYOUT.size));
+    let mut fields = CustomFields::new(ator);
+    let header: Header = fields.read_next(mem)?;
     let ation = match header.strat {
         Strategy::Bump => {
-            ator = ator.set_addr(ator.addr().align_to(BumpAlloc::LAYOUT.align));
-            let mut bump: BumpAlloc = mem.read(ator)?;
+            let mut bump: BumpAlloc = fields.read_next(mem)?;
+            let bump_cap = fields.save_cap().expect("called read_next()");
             let ation = bump.alloc(header, layout)?;
-            mem.write(ator, bump)?;
+            mem.write(bump_cap, bump)?;
             ation
         }
     };
@@ -254,33 +248,30 @@ pub fn free(
     todo!()
 }
 
-pub fn free_all(mut ator: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
-    // TODO: reading allocator is dup code
-    let header: Header = mem.read(ator)?;
-    ator = ator.set_addr(ator.addr().add(Header::LAYOUT.size));
+pub fn free_all(ator: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+    let mut fields = CustomFields::new(ator);
+    let header: Header = fields.read_next(mem)?;
     match header.strat {
         Strategy::Bump => {
-            ator = ator.set_addr(ator.addr().align_to(BumpAlloc::LAYOUT.align));
-            let mut bump: BumpAlloc = mem.read(ator)?;
+            let mut bump: BumpAlloc = fields.read_next(mem)?;
+            let bump_cap = fields.save_cap().expect("called read_next()");
             bump.free_all();
             revoke::by_bounds(mem, bump.inner.start(), bump.inner.endb())?;
             if header.flags.contains(InitFlags::INIT_ON_FREE) {
                 mem.memset(bump.inner, bump.inner.capability().len(), UNINIT_BYTE)?;
             }
-            mem.write(ator, bump)?;
+            mem.write(bump_cap, bump)?;
         }
     }
     Ok(())
 }
 
-pub fn stat(mut ator: TaggedCapability, mem: &Memory) -> Result<Stats, Exception> {
-    // TODO: reading allocator is dup code
-    let header: Header = mem.read(ator)?;
-    ator = ator.set_addr(ator.addr().add(Header::LAYOUT.size));
+pub fn stat(ator: TaggedCapability, mem: &Memory) -> Result<Stats, Exception> {
+    let mut fields = CustomFields::new(ator);
+    let header: Header = fields.read_next(mem)?;
     let stat = match header.strat {
         Strategy::Bump => {
-            ator = ator.set_addr(ator.addr().align_to(BumpAlloc::LAYOUT.align));
-            let bump: BumpAlloc = mem.read(ator)?;
+            let bump: BumpAlloc = fields.read_next(mem)?;
             bump.stat(header)
         }
     };

@@ -1,12 +1,17 @@
 mod core_impls;
+mod custom;
+mod structs;
 
 use bitvec::slice::BitSlice;
 
-use core::{fmt, slice};
+use core::fmt;
 
 use crate::capability::Address;
 use crate::exception::Exception;
 use crate::int::UAddr;
+
+pub use custom::CustomFields;
+pub use structs::{StructMut, StructRef};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Align(u8);
@@ -64,7 +69,7 @@ impl Ty for Layout {
     const LAYOUT: Layout = layout(Self::FIELDS);
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        let mut fields = FieldsRef::new(src, addr, valid, Self::FIELDS);
+        let mut fields = StructRef::new(src, addr, valid, Self::FIELDS);
         Ok(Self {
             size: fields.read_next::<UAddr>()?,
             align: fields.read_next::<Align>()?,
@@ -77,7 +82,7 @@ impl Ty for Layout {
         addr: Address,
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
-        let mut fields = FieldsMut::new(dst, addr, valid, Self::FIELDS);
+        let mut fields = StructMut::new(dst, addr, valid, Self::FIELDS);
         fields.write_next(self.size)?;
         fields.write_next(self.align)?;
         Ok(())
@@ -142,7 +147,7 @@ pub const fn layout(fields: &[Layout]) -> Layout {
     let mut idx = 0;
     while idx < fields.len() {
         let field = fields[idx];
-        offset = FieldsLogic::field_step(field, offset).cur_offset;
+        offset = FieldStep::new(field, offset).cur_offset;
 
         // alignment of struct is max of all field alignments
         if field.align.get() > align.get() {
@@ -158,105 +163,16 @@ pub const fn layout(fields: &[Layout]) -> Layout {
     }
 }
 
-#[derive(Debug)]
-pub struct FieldsRef<'fields, 'src, 'valid> {
-    logic: FieldsLogic<'fields>,
-    src: &'src [u8],
-    addr: Address,
-    valid: &'valid BitSlice<u8>,
-}
-
-#[derive(Debug)]
-pub struct FieldsMut<'fields, 'dst, 'valid> {
-    logic: FieldsLogic<'fields>,
-    dst: &'dst mut [u8],
-    addr: Address,
-    valid: &'valid mut BitSlice<u8>,
-}
-
-impl<'fields, 'src, 'valid> FieldsRef<'fields, 'src, 'valid> {
-    pub fn new(
-        src: &'src [u8],
-        addr: Address,
-        valid: &'valid BitSlice<u8>,
-        fields: &'fields [Layout],
-    ) -> Self {
-        Self {
-            logic: FieldsLogic::new(fields),
-            src,
-            addr,
-            valid,
-        }
+// TODO: overflow
+/// Returns the index of the last granule in the given address span.
+pub fn gran_span(addr: Address, size: UAddr) -> usize {
+    if size == 0 {
+        return 0;
     }
-
-    pub fn read_next<T: Ty>(&mut self) -> Result<T, Exception> {
-        let (layout, offset) = self.logic.next().unwrap();
-        debug_assert_eq!(T::LAYOUT, layout);
-        let size = layout.size;
-
-        let src = &self.src[offset as usize..][..size as usize];
-        let addr = self.addr.add(offset);
-        let valid = &self.valid[FieldsLogic::gran_span(self.addr, offset)..]
-            [..=FieldsLogic::gran_span(addr, size)];
-
-        T::read(src, addr, valid)
-    }
-}
-
-impl<'fields, 'dst, 'valid> FieldsMut<'fields, 'dst, 'valid> {
-    pub fn new(
-        dst: &'dst mut [u8],
-        addr: Address,
-        valid: &'valid mut BitSlice<u8>,
-        fields: &'fields [Layout],
-    ) -> Self {
-        Self {
-            logic: FieldsLogic::new(fields),
-            dst,
-            addr,
-            valid,
-        }
-    }
-
-    pub fn write_next<T: Ty>(&mut self, src: T) -> Result<(), Exception> {
-        let (layout, offset) = self.logic.next().unwrap();
-        debug_assert_eq!(T::LAYOUT, layout);
-        let size = layout.size;
-
-        let dst = &mut self.dst[offset as usize..][..size as usize];
-        let addr = self.addr.add(offset);
-        let valid = &mut self.valid[FieldsLogic::gran_span(self.addr, offset)..]
-            [..=FieldsLogic::gran_span(addr, size)];
-
-        src.write(dst, addr, valid)
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct FieldsLogic<'a> {
-    fields: slice::Iter<'a, Layout>,
-    cur_offset: UAddr,
-}
-
-impl<'a> FieldsLogic<'a> {
-    pub fn new(fields: &'a [Layout]) -> Self {
-        Self {
-            fields: fields.iter(),
-            cur_offset: 0,
-        }
-    }
-
-    // TODO: overflow
-    /// Returns the index of the last granule in the given address span.
-    pub fn gran_span(addr: Address, size: UAddr) -> usize {
-        if size == 0 {
-            return 0;
-        }
-        let endb = addr.add(size);
-        let end = endb.sub(1);
-        let diff = end.gran().0 - addr.gran().0;
-        usize::try_from(diff).unwrap()
-    }
+    let endb = addr.add(size);
+    let end = endb.sub(1);
+    let diff = end.gran().0 - addr.gran().0;
+    usize::try_from(diff).unwrap()
 }
 
 struct FieldStep {
@@ -264,8 +180,8 @@ struct FieldStep {
     pub cur_offset: UAddr,
 }
 
-impl FieldsLogic<'_> {
-    const fn field_step(field: Layout, mut cur_offset: UAddr) -> FieldStep {
+impl FieldStep {
+    const fn new(field: Layout, mut cur_offset: UAddr) -> FieldStep {
         // bump to aligned start of field
         while cur_offset % field.align.get() != 0 {
             // 2.next_multiple_of_two() == 2, so add 1 to always go up
@@ -277,19 +193,5 @@ impl FieldsLogic<'_> {
             field_offset,
             cur_offset,
         }
-    }
-}
-
-impl Iterator for FieldsLogic<'_> {
-    type Item = (
-        Layout, // layout of field
-        UAddr,  // field offset from start
-    );
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let field = *self.fields.next()?;
-        let step = FieldsLogic::field_step(field, self.cur_offset);
-        self.cur_offset = step.cur_offset;
-        Some((field, step.field_offset))
     }
 }
