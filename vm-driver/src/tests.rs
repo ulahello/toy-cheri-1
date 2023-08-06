@@ -98,7 +98,7 @@ mod exec {
         let ops = assemble(FIB_ITER).unwrap();
         let mut mem = Memory::new(1024, 1024, ops.iter()).unwrap();
         let pc = mem.regs.read(&mem.tags, Register::Pc as _)?;
-        for n in 0..10 {
+        for n in 0..100 {
             println!("fib(n = {n})");
             mem.regs.write(&mut mem.tags, Register::Pc as _, pc)?; // reset execution
             mem.regs.write_data(&mut mem.tags, Register::A2 as _, n)?;
@@ -134,10 +134,19 @@ mod exec {
     }
 }
 
-const fn fib(n: UGran) -> UGran {
-    match n {
-        0 => 0,
-        1 => 1,
-        _ => fib(n - 1) + fib(n - 2),
+fn fib(n: UGran) -> UGran {
+    let mut f2 = 0;
+    if n == 0 {
+        return f2;
+    };
+    let mut f1 = 1;
+    let mut f;
+    for _ in 2..=n {
+        f = f2
+            .checked_add(f1)
+            .expect("nth fibonacci mustn't overflow UGran");
+        f2 = f1;
+        f1 = f;
     }
+    return f1;
 }
