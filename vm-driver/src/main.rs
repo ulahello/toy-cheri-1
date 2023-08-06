@@ -23,7 +23,7 @@ use fruticose_vm::int::UAddr;
 use fruticose_vm::mem::Memory;
 use fruticose_vm::op::Op;
 
-// TODOO: debugging
+// TODOOO: debugging
 
 /// Fruticose virtual machine
 #[derive(FromArgs)]

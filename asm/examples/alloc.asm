@@ -1,7 +1,7 @@
 ; request allocation from parent allocator
 loadi a2, SYS_ALLOC_ALLOC
 cpy a3, z0
-; TODO: support structs as immediate values
+; TODOO: support structs as immediate values
 loadi a4, 18446744073709551680 ; Layout { size = 64, align = Align(1) }
 syscall
 
