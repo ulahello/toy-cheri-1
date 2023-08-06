@@ -14,8 +14,8 @@ fib_loop:
 	bltu a2, t0, fib_end ; if (n < idx) break
 
 	add t3, t2, t1 ; fn = f2 + f1
-	cpy t2, t1
-	cpy t1, t3
+	cpy t2, t1 ; f2 = f1
+	cpy t1, t3 ; f1 = fn
 
 	addi t0, t0, 1 ; idx += 1
 	jal zero, fib_loop ; continue
