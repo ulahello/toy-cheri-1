@@ -9,7 +9,7 @@ use crate::mem::TagController;
 
 #[derive(Debug)]
 pub struct Registers {
-    regs: [Capability; 32],
+    regs: [Capability; Self::COUNT as _],
 }
 
 impl Registers {
