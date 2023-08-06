@@ -102,7 +102,7 @@ impl fmt::Display for Align {
 pub trait Ty: Copy + Sized + fmt::Debug {
     const LAYOUT: Layout;
 
-    /// Read byte representation of `self` from `src`. This read may observe the
+    /// Read byte representation of `Self` from `src`. This read may observe the
     /// tag controller. For such circumstances, the bit slice `valid` is
     /// provided. `addr` is equivalent to the starting address of `dst`.
     ///
