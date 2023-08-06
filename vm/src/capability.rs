@@ -7,7 +7,7 @@ use core::fmt::{self, Write};
 use crate::abi::{Align, Layout, Ty};
 use crate::access::{MemAccess, MemAccessKind};
 use crate::exception::Exception;
-use crate::int::{SAddr, UAddr, UGran, UGRAN_SIZE, UNINIT};
+use crate::int::{gran_sign, SAddr, UAddr, UGran, UGRAN_SIZE, UNINIT};
 
 /* TODOOO: implement sealed capabilities using metadata */
 
@@ -404,7 +404,13 @@ impl fmt::Debug for TaggedCapability {
                 .field("perms", &self.perms())
                 .finish()
         } else {
-            write!(f, "{}", self.to_ugran())
+            let u = self.to_ugran();
+            let s = gran_sign(u);
+            if s.is_negative() {
+                write!(f, "{{u{u} s{s}}}")
+            } else {
+                write!(f, "{u}")
+            }
         }
     }
 }
