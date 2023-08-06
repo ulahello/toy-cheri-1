@@ -104,12 +104,12 @@ pub trait Ty: Copy + Sized + fmt::Debug {
 
     /// Read byte representation of `Self` from `src`. This read may observe the
     /// tag controller. For such circumstances, the bit slice `valid` is
-    /// provided. `addr` is equivalent to the starting address of `dst`.
+    /// provided. `addr` is equivalent to the starting address of `src`.
     ///
     /// # Notes
     ///
-    /// - The length of `dst` must equal `Self::LAYOUT.size`.
-    /// - The length of `valid` must equal the number of granules which `dst`
+    /// - The length of `src` must equal `Self::LAYOUT.size`.
+    /// - The length of `valid` must equal the number of granules which `src`
     /// spans.
     ///
     /// # Errors
