@@ -88,7 +88,7 @@ impl Eq for Address {}
 
 impl PartialOrd for Address {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.get().partial_cmp(&other.get())
+        Some(self.cmp(other))
     }
 }
 

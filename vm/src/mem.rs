@@ -218,7 +218,7 @@ impl Memory {
 }
 
 impl Memory {
-    fn slice_raw(mem: &Box<[u8]>, src: TaggedCapability, layout: Layout) -> Option<&[u8]> {
+    fn slice_raw(mem: &[u8], src: TaggedCapability, layout: Layout) -> Option<&[u8]> {
         let start_idx = usize::try_from(src.addr().get()).ok()?;
         let layout_size = usize::try_from(layout.size).ok()?;
         mem.get(start_idx..)?.get(..layout_size)
