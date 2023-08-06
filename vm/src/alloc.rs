@@ -227,8 +227,8 @@ pub fn alloc(
     let header: Header = fields.read_next(mem)?;
     let ation = match header.strat {
         Strategy::Bump => {
+            let bump_cap = fields.peek::<BumpAlloc>();
             let mut bump: BumpAlloc = fields.read_next(mem)?;
-            let bump_cap = fields.save_cap().expect("called read_next()");
             let ation = bump.alloc(header, layout)?;
             mem.write(bump_cap, bump)?;
             ation
@@ -253,8 +253,8 @@ pub fn free_all(ator: TaggedCapability, mem: &mut Memory) -> Result<(), Exceptio
     let header: Header = fields.read_next(mem)?;
     match header.strat {
         Strategy::Bump => {
+            let bump_cap = fields.peek::<BumpAlloc>();
             let mut bump: BumpAlloc = fields.read_next(mem)?;
-            let bump_cap = fields.save_cap().expect("called read_next()");
             bump.free_all();
             revoke::by_bounds(mem, bump.inner.start(), bump.inner.endb())?;
             if header.flags.contains(InitFlags::INIT_ON_FREE) {

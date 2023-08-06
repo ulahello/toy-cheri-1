@@ -10,7 +10,6 @@ use crate::mem::Memory;
 pub struct CustomFields {
     base: TaggedCapability,
     cur_offset: UAddr,
-    prev_field: Option<TaggedCapability>,
 }
 
 impl CustomFields {
@@ -18,7 +17,6 @@ impl CustomFields {
         Self {
             base,
             cur_offset: 0,
-            prev_field: None,
         }
     }
 
@@ -39,7 +37,6 @@ impl CustomFields {
         let (field, cur_offset) = self.peek_inner::<T>();
         let val = mem.read(field)?;
         self.cur_offset = cur_offset;
-        self.prev_field = Some(field);
         Ok(val)
     }
 
@@ -47,11 +44,6 @@ impl CustomFields {
         let (field, cur_offset) = self.peek_inner::<T>();
         mem.write(field, src)?;
         self.cur_offset = cur_offset;
-        self.prev_field = Some(field);
         Ok(())
-    }
-
-    pub const fn save_cap(&self) -> Option<TaggedCapability> {
-        self.prev_field
     }
 }
