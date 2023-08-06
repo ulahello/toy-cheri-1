@@ -13,7 +13,7 @@ use crate::syscall::SyscallKind;
 
 impl Memory {
     pub fn execute_op(&mut self) -> Result<(), Exception> {
-        let mut pc = self.regs.read(&self.tags, Register::Pc as _).unwrap();
+        let pc = self.regs.read(&self.tags, Register::Pc as _).unwrap();
         let op: Op = self.read(pc)?;
         pc.check_access(
             MemAccessKind::Execute,
@@ -32,7 +32,11 @@ impl Memory {
         );
         let _guard = span.enter();
 
-        let mut return_address = pc.set_addr(pc.addr().add(Op::LAYOUT.size));
+        let mut return_address = None; // override return address
+        let inc_pc = pc.set_addr(pc.addr().add(Op::LAYOUT.size));
+        self.regs
+            .write(&mut self.tags, Register::Pc as _, inc_pc)
+            .unwrap();
 
         tracing::trace!("executing {op}");
 
@@ -330,16 +334,16 @@ impl Memory {
             OpKind::Jal => {
                 let ra_dst = reg(op.op1);
                 let offset: SAddr = addr_sign(op.op2.to_ugran() as UAddr);
-                self.regs.write(&mut self.tags, ra_dst, return_address)?;
-                return_address = pc.set_addr(pc.addr().offset(offset));
+                self.regs.write(&mut self.tags, ra_dst, inc_pc)?;
+                return_address = Some(pc.set_addr(pc.addr().offset(offset)));
             }
 
             OpKind::Jalr => {
                 let ra_dst = reg(op.op1);
                 let base: UAddr = self.regs.read_ty(&self.tags, reg(op.op2))?;
                 let offset_imm: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
-                self.regs.write(&mut self.tags, ra_dst, return_address)?;
-                return_address = pc.set_addr(Address(base).offset(offset_imm));
+                self.regs.write(&mut self.tags, ra_dst, inc_pc)?;
+                return_address = Some(pc.set_addr(Address(base).offset(offset_imm)));
             }
 
             OpKind::Beq => {
@@ -347,7 +351,7 @@ impl Memory {
                 let cmp2: UGran = self.regs.read_data(reg(op.op2))?;
                 let offset: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 == cmp2 {
-                    return_address = pc.set_addr(pc.addr().offset(offset));
+                    return_address = Some(pc.set_addr(pc.addr().offset(offset)));
                 }
             }
 
@@ -356,7 +360,7 @@ impl Memory {
                 let cmp2: UGran = self.regs.read_data(reg(op.op2))?;
                 let offset = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 != cmp2 {
-                    return_address = pc.set_addr(pc.addr().offset(offset));
+                    return_address = Some(pc.set_addr(pc.addr().offset(offset)));
                 }
             }
 
@@ -365,7 +369,7 @@ impl Memory {
                 let cmp2: SGran = self.regs.read_ty(&self.tags, reg(op.op2))?;
                 let offset: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 < cmp2 {
-                    return_address = pc.set_addr(pc.addr().offset(offset));
+                    return_address = Some(pc.set_addr(pc.addr().offset(offset)));
                 }
             }
 
@@ -374,7 +378,7 @@ impl Memory {
                 let cmp2: SGran = self.regs.read_ty(&self.tags, reg(op.op2))?;
                 let offset: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 >= cmp2 {
-                    return_address = pc.set_addr(pc.addr().offset(offset));
+                    return_address = Some(pc.set_addr(pc.addr().offset(offset)));
                 }
             }
 
@@ -383,7 +387,7 @@ impl Memory {
                 let cmp2: UGran = self.regs.read_data(reg(op.op2))?;
                 let offset: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 < cmp2 {
-                    return_address = pc.set_addr(pc.addr().offset(offset));
+                    return_address = Some(pc.set_addr(pc.addr().offset(offset)));
                 }
             }
 
@@ -392,7 +396,7 @@ impl Memory {
                 let cmp2: UGran = self.regs.read_data(reg(op.op2))?;
                 let offset: SAddr = addr_sign(op.op3.to_ugran() as UAddr);
                 if cmp1 >= cmp2 {
-                    return_address = pc.set_addr(pc.addr().offset(offset));
+                    return_address = Some(pc.set_addr(pc.addr().offset(offset)));
                 }
             }
 
@@ -485,11 +489,10 @@ impl Memory {
             }
         }
 
-        // increment pc
-        pc = return_address;
-        self.regs
-            .write(&mut self.tags, Register::Pc as _, pc)
-            .unwrap();
+        // return address was overridden
+        if let Some(ra) = return_address {
+            self.regs.write(&mut self.tags, Register::Pc as _, ra)?;
+        }
 
         Ok(())
     }

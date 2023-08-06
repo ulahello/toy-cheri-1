@@ -95,8 +95,7 @@ fib_ret:
 	addi t1, t1, UADDR_SIZE
 	csetaddr sp, t1
 	; jump to return address
-___zero: ; HACK: need to support label OR immediate
-	jalr zero, t0, ___zero ; jump to the return address
+	cpy pc, ra
 
 exit:
 	loadi a2, SYS_EXIT

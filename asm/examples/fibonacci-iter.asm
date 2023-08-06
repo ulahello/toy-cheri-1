@@ -31,9 +31,7 @@ fib_ret_0:
 	jal zero, fib_ret
 
 fib_ret:
-	cgetaddr t0, ra
-___zero: ; HACK: need to support label OR immediate
-	jalr zero, t0, ___zero ; jump to the return address
+	cpy pc, ra
 
 exit:
 	loadi a2, SYS_EXIT
