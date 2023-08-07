@@ -14,7 +14,7 @@ pub use custom::CustomFields;
 pub use structs::{StructMut, StructRef};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Align(u8);
+pub struct Align(u8 /* must be less than UAddr::BITS */);
 
 impl Align {
     pub const MIN: Self = Self::new(1).unwrap();
@@ -39,7 +39,8 @@ impl Ty for Align {
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
         let repr = u8::read(src, addr, valid)?;
-        Ok(Self(repr))
+        let trunc = repr & 0b0011_1111; // truncate to u6
+        Ok(Self(trunc))
     }
 
     fn write(
