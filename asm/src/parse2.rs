@@ -1,6 +1,6 @@
 use fruticose_vm::abi::Ty;
 use fruticose_vm::capability::TaggedCapability;
-use fruticose_vm::int::{addr_unsign, SAddr};
+use fruticose_vm::int::{gran_unsign, SAddr};
 use fruticose_vm::op::Op;
 
 use core::iter::Enumerate;
@@ -77,7 +77,7 @@ impl<'s> Parser2<'s> {
                                         .ok_or_else(|| overflow_err.clone())?;
                                     let offset: SAddr =
                                         label_op_idx.checked_sub(cur_op_idx).ok_or(overflow_err)?;
-                                    TaggedCapability::from_ugran(addr_unsign(offset).into())
+                                    TaggedCapability::from_ugran(gran_unsign(offset.into()))
                                 }
                                 None => {
                                     return Err(ParseErr {
