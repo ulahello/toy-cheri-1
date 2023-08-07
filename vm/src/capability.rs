@@ -340,6 +340,10 @@ impl TaggedCapability {
         root
     }
 
+    pub const fn len(&self) -> UAddr {
+        self.capability().len()
+    }
+
     pub const fn access(&self, kind: MemAccessKind, align: Align, len: Option<UAddr>) -> MemAccess {
         MemAccess {
             tcap: *self,

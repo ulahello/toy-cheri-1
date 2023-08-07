@@ -210,8 +210,21 @@ pub fn init(
 /// This frees all memory allocated by the allocator and returns the original
 /// span passed to [`init`].
 pub fn deinit(ator: TaggedCapability, mem: &mut Memory) -> Result<TaggedCapability, Exception> {
-    free_all(ator, mem)?;
-    todo!()
+    let mut fields = CustomFields::new(ator);
+    let header: Header = fields.read_next(mem)?;
+    match header.strat {
+        Strategy::Bump => {
+            let bump_cap = fields.peek::<BumpAlloc>();
+            let mut bump: BumpAlloc = fields.read_next(mem)?;
+            bump.free_all();
+            mem.write(bump_cap, bump)?;
+        }
+    }
+    if header.flags.contains(InitFlags::INIT_ON_FREE) {
+        mem.memset(ator, ator.len(), UNINIT_BYTE)?;
+    }
+    revoke::by_bounds(mem, ator.start(), ator.endb())?;
+    Ok(ator)
 }
 
 pub fn alloc(

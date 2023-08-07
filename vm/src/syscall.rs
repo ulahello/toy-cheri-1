@@ -19,7 +19,6 @@ pub enum SyscallKind {
     /// allocator capability is written to register `a0`.
     AllocInit,
 
-    // TODO: not implemented, docs subject to change
     /// De-initialize the allocator at register `a3`. This will invalidate all
     /// allocations currently yielded by the allocator, and the allocator
     /// itself. On success, the region previously owned by the allocator
