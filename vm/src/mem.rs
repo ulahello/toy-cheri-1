@@ -75,7 +75,7 @@ impl Memory {
         /* instantiate root allocator */
         // set up root capability
         tracing::debug!("acquiring root capability");
-        mem.root = TaggedCapability ::new(
+        mem.root = TaggedCapability::new(
             Capability::new(
                 Address(0),
                 Address(0),
