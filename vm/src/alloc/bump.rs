@@ -48,15 +48,15 @@ impl BumpAlloc {
         if self.inner.addr() == self.inner.endb() {
             return Err(err(AllocErrKind::Oom));
         }
+        if layout.size > self.bytes_free() {
+            return Err(err(AllocErrKind::NotEnoughMem));
+        }
         let mut ation = self.inner;
         ation = ation.set_addr(ation.addr().align_to(layout.align));
         ation = ation.set_bounds(ation.addr(), ation.addr().add(layout.size));
-        if ation.is_valid() {
-            self.inner = self.inner.set_addr(ation.endb());
-            Ok(ation)
-        } else {
-            Err(err(AllocErrKind::NotEnoughMem))
-        }
+        debug_assert!(ation.is_valid());
+        self.inner = self.inner.set_addr(ation.endb());
+        Ok(ation)
     }
 
     pub fn free_all(&mut self) {
