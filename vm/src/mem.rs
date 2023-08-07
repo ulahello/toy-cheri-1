@@ -118,6 +118,7 @@ impl Memory {
             .unwrap();
 
         /* instantiate call stack */
+        // TODO: stack traditionally grows downward, but the way we do allocations neglects the need for this, since the heap & stack "can't" be shared in a nice way.
         tracing::debug!("allocating program call stack");
         let call_stack = alloc::alloc(
             root_alloc,
