@@ -167,7 +167,7 @@ impl Capability {
                     & (UGran::MAX >> (UGran::BITS - Address::BITS as u32)))
                     as UAddr,
             ),
-            perms: Permissions::from_bits_truncate(
+            perms: Permissions::from_bits_retain(
                 ((ugran >> (Address::BITS * 3))
                     & (UGran::MAX >> (UGran::BITS - Permissions::BITS as u32)))
                     as _,
@@ -428,7 +428,7 @@ bitflags! {
 }
 
 impl Permissions {
-    pub const BITS: u8 = 3;
+    pub const BITS: u8 = 8;
 
     pub const fn r(self) -> bool {
         self.contains(Self::READ)
