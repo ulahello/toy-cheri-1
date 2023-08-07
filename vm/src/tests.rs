@@ -26,3 +26,31 @@ mod serde {
         }
     }
 }
+
+mod revoke {
+    use crate::abi::{Align, Layout};
+    use crate::capability::{Address, TaggedCapability};
+    use crate::mem::Memory;
+    use crate::registers::Register;
+    use crate::{alloc, revoke};
+
+    #[test]
+    fn endb_is_harmless() -> anyhow::Result<()> {
+        let mut mem = Memory::new(16, 0, [].iter())?;
+        let root_cap = mem.regs.read(&mem.tags, Register::Z0 as _)?;
+        let ation = alloc::alloc(
+            root_cap,
+            Layout {
+                size: 8,
+                align: Align::new(1).unwrap(),
+            },
+            &mut mem,
+        )?;
+        mem.regs.write(&mut mem.tags, Register::T0 as _, ation)?;
+        revoke::by_bounds(&mut mem, ation.endb(), ation.endb().add(1))?;
+        revoke::by_bounds(&mut mem, ation.start().sub(1), ation.start())?;
+        let new_ation = mem.regs.read(&mem.tags, Register::T0 as _)?;
+        assert!(new_ation.is_valid());
+        Ok(())
+    }
+}

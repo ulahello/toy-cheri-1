@@ -26,8 +26,11 @@ pub fn by_bounds(mem: &mut Memory, start: Address, endb: Address) -> Result<(), 
                     mem.read(root.set_addr(gran.addr()))?
                 }
             };
-            if (cap.start() >= start && cap.start() <= endb)
-                || (cap.endb() >= start && cap.endb() <= endb)
+            // NOTE: if a start equals an endb, that's not dangerous. it's "end
+            // by" after all, and start is the minimum address that *isn't*
+            // within the span.
+            if (cap.start() >= start && cap.start() < endb)
+                || (cap.endb() > start && cap.endb() <= endb)
             {
                 // this capability would have been able to access the pattern
                 *mem.tags.mem.get_mut(idx).unwrap() = false;
