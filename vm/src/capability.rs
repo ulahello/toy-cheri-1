@@ -208,9 +208,12 @@ impl Capability {
         self.perms
     }
 
-    #[allow(clippy::len_without_is_empty)]
     pub const fn len(&self) -> UAddr {
         self.endb().get().saturating_sub(self.start().get())
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -342,6 +345,10 @@ impl TaggedCapability {
 
     pub const fn len(&self) -> UAddr {
         self.capability().len()
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.capability().is_empty()
     }
 
     pub const fn access(&self, kind: MemAccessKind, align: Align, len: Option<UAddr>) -> MemAccess {
