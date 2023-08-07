@@ -1,14 +1,27 @@
-; request allocation from parent allocator
-loadi a2, SYS_ALLOC_ALLOC
-cpy a3, z0
-; TODOO: support structs as immediate values
-loadi a4, 18446744073709551680 ; Layout { size = 64, align = Align(1) }
-syscall
+_start:
+	; TODOO: support structs as immediate values
+	; construct layout
+	loadi a2, 64 ; size = 64
+	loadi a3, 0 ; align = 1
+	jal ra, layout_new
 
-; statting allocator
-loadi a2, SYS_ALLOC_STAT
-cpy a3, z0 ; not strictly necessary because z0 is already written to a3
-syscall
+	; request allocation from parent allocator
+	loadi a2, SYS_ALLOC_ALLOC
+	cpy a3, z0
+	cpy a4, a0 ; a4 set from previous call
+	syscall
+
+	; statting allocator
+	loadi a2, SYS_ALLOC_STAT
+	cpy a3, z0 ; not strictly necessary because z0 is already written to a3
+	syscall
+
+	jal zero, exit
+
+layout_new: ; fn(size: UAddr, align: u8) -> Layout
+	slli t0, a3, 64 ; @port
+	or a0, a2, t0
+	cpy pc, ra
 
 exit:
 	loadi a2, SYS_EXIT
