@@ -39,13 +39,17 @@ impl BumpAlloc {
             .expect("address must not exceed endb (but can be equal)")
     }
 
+    pub const fn is_full(&self) -> bool {
+        self.inner.addr().get() == self.inner.endb().get()
+    }
+
     pub fn alloc(&mut self, header: Header, layout: Layout) -> Result<TaggedCapability, AllocErr> {
         let err = |kind: AllocErrKind| AllocErr {
             stats: self.stat(header),
             requested: layout,
             kind,
         };
-        if self.inner.addr() == self.inner.endb() {
+        if self.is_full() {
             return Err(err(AllocErrKind::Oom));
         }
         if layout.size > self.bytes_free() {
