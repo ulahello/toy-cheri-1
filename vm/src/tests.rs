@@ -1,5 +1,6 @@
 mod serde {
     use crate::capability::{Address, Capability, Permissions};
+    use crate::int::UGran;
     use nanorand::{Pcg64, Rng};
 
     #[test]
@@ -19,8 +20,8 @@ mod serde {
 
             // ugran randomly generated
             {
-                let cap = Capability::from_ugran(rng.generate());
-                assert_eq!(cap, Capability::from_ugran(cap.to_ugran()));
+                let ugran: UGran = rng.generate();
+                assert_eq!(ugran, Capability::from_ugran(ugran).to_ugran());
             }
         }
     }
