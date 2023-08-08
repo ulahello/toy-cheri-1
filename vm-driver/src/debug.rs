@@ -59,6 +59,12 @@ fn launch_inner<W: Write>(
     .context("failed to set Ctrl-C handler")?;
 
     splash(&mut out)?;
+
+    if let Some(except) = already_raised {
+        writeln!(out, "info: the following exception has already been raised")?;
+        pretty_println_exception(&mut out, except)?;
+    }
+
     loop {
         let input = readln(&mut out, "> ")?;
         let mut cmd = input.trim().split_ascii_whitespace();
@@ -117,14 +123,6 @@ fn launch_inner<W: Write>(
                                 }
                             }
                         }
-                    }
-
-                    if let Some(raised) = already_raised {
-                        writeln!(
-                            out,
-                            "warning: the following exception has already been raised"
-                        )?;
-                        pretty_println_exception(&mut out, raised)?;
                     }
 
                     let mut count: Option<u128> = Some(0); // none indicates overflow
