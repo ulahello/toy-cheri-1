@@ -58,7 +58,7 @@ fn launch_inner<W: Write>(
                     writeln!(out, "quit. quit.")?;
                     writeln!(out, "help. list commands.")?;
                     writeln!(out, "step [<count> | while]. execute the next Op(s).")?;
-                    writeln!(out, "read <location>. read value at location.")?;
+                    writeln!(out, "print <location>. print value at location.")?;
                 }
 
                 "step" | "s" => {
@@ -115,7 +115,7 @@ fn launch_inner<W: Write>(
                     }
                 }
 
-                "read" | "r" => match cmd.next() {
+                "print" | "p" => match cmd.next() {
                     Some(loc) => {
                         if let Some(reg) = Register::from_str(loc) {
                             let val = mem.regs.read(&mem.tags, reg as _)?;
