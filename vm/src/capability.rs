@@ -309,10 +309,10 @@ impl TaggedCapability {
     }
 
     pub const fn set_bounds(self, start: Address, endb: Address) -> Self {
-        /* TODO: is it okay if `endb < start`? should we invalidate it now or
-         * wait for access to raise exception? */
         // HACK: address should be const comparable
-        let valid = start.get() >= self.start().get() && endb.get() <= self.endb().get();
+        let valid = start.get() >= self.start().get()
+            && endb.get() <= self.endb().get()
+            && start.get() <= endb.get();
         Self {
             capa: Capability {
                 addr: self.addr(),

@@ -141,5 +141,6 @@ mod capability {
         assert!(!cap.set_bounds(Address(0), Address(2)).is_valid());
         assert!(cap.set_bounds(Address(16), Address(16)).is_valid());
         assert!(!cap.set_bounds(Address(16), Address(17)).is_valid());
+        assert!(!cap.set_bounds(Address(16), Address(8)).is_valid());
     }
 }
