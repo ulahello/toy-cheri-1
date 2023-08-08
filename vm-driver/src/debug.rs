@@ -156,7 +156,7 @@ fn launch_inner<W: Write>(
 
 fn splash<W: Write>(mut f: W) -> io::Result<()> {
     let line1 = " fruticose debugger ";
-    let line2 = "type 'h' or 'help' for help";
+    let line2 = "type 'h' or 'help' for help.";
     writeln!(
         f,
         "{line1:=^len$}",
