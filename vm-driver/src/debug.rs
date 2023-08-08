@@ -45,6 +45,8 @@ fn launch_inner<W: Write>(
     already_raised: Option<Exception>,
     mut out: W,
 ) -> anyhow::Result<()> {
+    writeln!(out, "==== fruticose debugger ===")?;
+    writeln!(out, "type 'h' or 'help' for help")?;
     loop {
         let input = readln(&mut out, "> ")?;
         let mut cmd = input.trim().split_ascii_whitespace();
