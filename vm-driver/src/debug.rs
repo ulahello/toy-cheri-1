@@ -1,5 +1,5 @@
 use core::str::FromStr;
-use std::io::{self, BufRead, Read, Write};
+use std::io::{self, BufRead, Write};
 
 use fruticose_vm::exception::Exception;
 use fruticose_vm::mem::Memory;

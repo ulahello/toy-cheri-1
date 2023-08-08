@@ -29,7 +29,6 @@ mod serde {
 
 mod revoke {
     use crate::abi::{Align, Layout};
-    use crate::capability::{Address, TaggedCapability};
     use crate::mem::Memory;
     use crate::registers::Register;
     use crate::{alloc, revoke};
