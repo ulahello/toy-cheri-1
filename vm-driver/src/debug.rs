@@ -71,6 +71,7 @@ fn launch_inner<W: Write>(
                                 Ok(n) => remain = Some(n),
                                 Err(err) => {
                                     writeln!(out, "error: invalid count: {err}")?;
+                                    continue;
                                 }
                             }
                         }
