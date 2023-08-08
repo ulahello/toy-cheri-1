@@ -136,6 +136,7 @@ fn launch_inner<W: Write>(
                             raised = Some(except);
                             break;
                         }
+                        // TODO: if process exits it says "executed 0 ops" but did syscall
                         if let Some(n) = count {
                             count = n.checked_add(1);
                         }
