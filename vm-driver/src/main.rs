@@ -1,3 +1,5 @@
+#![feature(str_split_whitespace_remainder)]
+
 mod debug;
 
 #[cfg(test)]
@@ -92,7 +94,7 @@ fn try_main(args: Args) -> anyhow::Result<()> {
 
     tracing::info!("execution start");
     loop {
-        match mem.execute_op() {
+        match mem.execute_next() {
             Ok(()) => (),
             Err(Exception::ProcessExit) => break,
             Err(raised) => {
@@ -124,7 +126,14 @@ fn assemble_init(init: &Path) -> anyhow::Result<Vec<Op>> {
     let init_src = fs::read_to_string(init).context("failed to read init program source")?;
 
     tracing::trace!("assembling init program");
-    let parser = Parser2::new(&init_src);
+    assemble_src(&init_src, Some(init))
+}
+
+fn assemble_src(src: &str, path: Option<&Path>) -> anyhow::Result<Vec<Op>> {
+    let span = span!(Level::TRACE, "assemble_src");
+    let _guard = span.enter();
+
+    let parser = Parser2::new(&src);
     let mut ops = Vec::new();
     let mut err_count: usize = 0;
     let mut err_out = BufWriter::new(stderr());
@@ -133,7 +142,7 @@ fn assemble_init(init: &Path) -> anyhow::Result<Vec<Op>> {
             Ok(op) => ops.push(op),
             Err(err) => {
                 err_count += 1;
-                pretty_print_parse_err(&mut err_out, init, err)?;
+                pretty_print_parse_err(&mut err_out, path, err)?;
                 writeln!(err_out)?;
             }
         }
@@ -141,7 +150,7 @@ fn assemble_init(init: &Path) -> anyhow::Result<Vec<Op>> {
     err_out.flush()?;
     if err_count > 0 {
         anyhow::bail!(
-            "failed to assemble init program due to {err_count} previous error{}",
+            "failed to assemble source due to {err_count} previous error{}",
             if err_count == 1 { "" } else { "s" }
         );
     }
@@ -186,7 +195,7 @@ fn pretty_print_main_err<W: Write>(mut f: W, err: anyhow::Error) -> anyhow::Resu
 
 fn pretty_print_parse_err<W: Write>(
     mut f: W,
-    src_path: &Path,
+    src_path: Option<&Path>,
     err: ParseErr<'_>,
 ) -> anyhow::Result<()> {
     let err_title = Color::LightRed.bold();
@@ -252,7 +261,7 @@ fn pretty_print_parse_err<W: Write>(
 
     let diag = Diagnostic::new(
         span,
-        src_path,
+        src_path.unwrap_or(Path::new("<anonymous>")),
         text,
         symbols,
         err_span,

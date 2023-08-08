@@ -12,7 +12,7 @@ use crate::registers::Register;
 use crate::syscall::SyscallKind;
 
 impl Memory {
-    pub fn execute_op(&mut self) -> Result<(), Exception> {
+    pub fn execute_next(&mut self) -> Result<(), Exception> {
         let pc = self.regs.read(&self.tags, Register::Pc as _).unwrap();
         let op: Op = self.read(pc)?;
         pc.check_access(
@@ -32,11 +32,33 @@ impl Memory {
         );
         let _guard = span.enter();
 
+        self.execute_op(op, Some(pc), true)?;
+
+        Ok(())
+    }
+
+    pub fn execute_op(
+        &mut self,
+        op: Op,
+        pc: Option<TaggedCapability>,
+        bump_pc: bool,
+    ) -> Result<(), Exception> {
+        let pc = if let Some(cap) = pc {
+            cap
+        } else {
+            self.regs.read(&self.tags, Register::Pc as _)?
+        };
         let mut return_address = None; // override return address
-        let inc_pc = pc.set_addr(pc.addr().add(Op::LAYOUT.size));
-        self.regs
-            .write(&mut self.tags, Register::Pc as _, inc_pc)
-            .unwrap();
+        let inc_pc = if bump_pc {
+            pc.set_addr(pc.addr().add(Op::LAYOUT.size))
+        } else {
+            pc
+        };
+        if bump_pc {
+            self.regs
+                .write(&mut self.tags, Register::Pc as _, inc_pc)
+                .unwrap();
+        }
 
         tracing::trace!("executing {op}");
 

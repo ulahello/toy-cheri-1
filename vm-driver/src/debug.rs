@@ -59,6 +59,7 @@ fn launch_inner<W: Write>(
                     writeln!(out, "help. list commands.")?;
                     writeln!(out, "step [<count> | while]. execute the next Op(s).")?;
                     writeln!(out, "print <location>. print value at location.")?;
+                    writeln!(out, "do <operation>. execute operation.")?;
                 }
 
                 "step" | "s" => {
@@ -82,13 +83,13 @@ fn launch_inner<W: Write>(
                             out,
                             "warning: the following exception has already been raised"
                         )?;
-                        writeln!(out, ":: {raised}")?;
+                        pretty_println_exception(&mut out, raised)?;
                     }
 
                     let mut count: Option<u128> = Some(0); // none indicates overflow
                     let mut raised = None;
                     while remain != Some(0) {
-                        if let Err(except) = mem.execute_op() {
+                        if let Err(except) = mem.execute_next() {
                             raised = Some(except);
                             break;
                         }
@@ -109,7 +110,7 @@ fn launch_inner<W: Write>(
                     }
                     if let Some(except) = raised {
                         writeln!(out, "exception raised")?;
-                        writeln!(out, ":: {except}")?;
+                        pretty_println_exception(&mut out, except)?;
                     } else {
                         writeln!(out, "OK")?;
                     }
@@ -128,11 +129,34 @@ fn launch_inner<W: Write>(
                     None => writeln!(out, "error: missing argument <location>")?,
                 },
 
+                "do" | "d" => {
+                    let src = if let Some(s) = cmd.remainder() {
+                        s
+                    } else {
+                        writeln!(out, "error: missing argument <operation>")?;
+                        continue;
+                    };
+                    // HACK: assembler api doesn't let me expect the contents of a line, excluding the newline
+                    let src = format!("{src}\n");
+                    if let Ok(ops) = super::assemble_src(&src, None) {
+                        for op in ops {
+                            if let Err(raised) = mem.execute_op(op, None, false) {
+                                pretty_println_exception(&mut out, raised)?;
+                            }
+                        }
+                    }
+                }
+
                 unk => writeln!(out, "error: unknown command '{unk}'")?,
             }
         }
     }
     out.flush()?;
+    Ok(())
+}
+
+fn pretty_println_exception<W: Write>(mut f: W, except: Exception) -> io::Result<()> {
+    writeln!(f, ":: {except}")?;
     Ok(())
 }
 

@@ -46,7 +46,7 @@ mod exec {
 
     fn exec(mem: &mut Memory) -> Result<(), Exception> {
         loop {
-            match mem.execute_op() {
+            match mem.execute_next() {
                 Ok(()) => (),
                 Err(err) => match err {
                     Exception::ProcessExit => break Ok(()),
