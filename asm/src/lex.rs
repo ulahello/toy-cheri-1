@@ -92,116 +92,35 @@ impl<'s> Lexer<'s> {
     }
 
     fn check_ctx(span: &'s str) -> Result<TokenTyp, LexErrTyp> {
-        let typ = match span {
-            // operations
-            "nop" => TokenTyp::Op(OpKind::Nop),
-            "cgetaddr" => TokenTyp::Op(OpKind::CGetAddr),
-            "csetaddr" => TokenTyp::Op(OpKind::CSetAddr),
-            "cgetbound" => TokenTyp::Op(OpKind::CGetBound),
-            "csetbound" => TokenTyp::Op(OpKind::CSetBound),
-            "cgetperm" => TokenTyp::Op(OpKind::CGetPerm),
-            "csetperm" => TokenTyp::Op(OpKind::CSetPerm),
-            "cgetvalid" => TokenTyp::Op(OpKind::CGetValid),
-            "cpy" => TokenTyp::Op(OpKind::Cpy),
-            "loadi" => TokenTyp::Op(OpKind::LoadI),
-            "loadu8" => TokenTyp::Op(OpKind::LoadU8),
-            "loadu16" => TokenTyp::Op(OpKind::LoadU16),
-            "loadu32" => TokenTyp::Op(OpKind::LoadU32),
-            "loadu64" => TokenTyp::Op(OpKind::LoadU64),
-            "loadu128" => TokenTyp::Op(OpKind::LoadU128),
-            "loadc" => TokenTyp::Op(OpKind::LoadC),
-            "store8" => TokenTyp::Op(OpKind::Store8),
-            "store16" => TokenTyp::Op(OpKind::Store16),
-            "store32" => TokenTyp::Op(OpKind::Store32),
-            "store64" => TokenTyp::Op(OpKind::Store64),
-            "store128" => TokenTyp::Op(OpKind::Store128),
-            "storec" => TokenTyp::Op(OpKind::StoreC),
-            "addi" => TokenTyp::Op(OpKind::AddI),
-            "add" => TokenTyp::Op(OpKind::Add),
-            "sub" => TokenTyp::Op(OpKind::Sub),
-            "sltsi" => TokenTyp::Op(OpKind::SltsI),
-            "sltui" => TokenTyp::Op(OpKind::SltuI),
-            "slts" => TokenTyp::Op(OpKind::Slts),
-            "sltu" => TokenTyp::Op(OpKind::Sltu),
-            "xori" => TokenTyp::Op(OpKind::XorI),
-            "xor" => TokenTyp::Op(OpKind::Xor),
-            "ori" => TokenTyp::Op(OpKind::OrI),
-            "or" => TokenTyp::Op(OpKind::Or),
-            "andi" => TokenTyp::Op(OpKind::AndI),
-            "and" => TokenTyp::Op(OpKind::And),
-            "slli" => TokenTyp::Op(OpKind::SllI),
-            "sll" => TokenTyp::Op(OpKind::Sll),
-            "srli" => TokenTyp::Op(OpKind::SrlI),
-            "srl" => TokenTyp::Op(OpKind::Srl),
-            "srai" => TokenTyp::Op(OpKind::SraI),
-            "sra" => TokenTyp::Op(OpKind::Sra),
-            "jal" => TokenTyp::Op(OpKind::Jal),
-            "jalr" => TokenTyp::Op(OpKind::Jalr),
-            "beq" => TokenTyp::Op(OpKind::Beq),
-            "bne" => TokenTyp::Op(OpKind::Bne),
-            "blts" => TokenTyp::Op(OpKind::Blts),
-            "bges" => TokenTyp::Op(OpKind::Bges),
-            "bltu" => TokenTyp::Op(OpKind::Bltu),
-            "bgeu" => TokenTyp::Op(OpKind::Bgeu),
-            "syscall" => TokenTyp::Op(OpKind::Syscall),
+        let typ = if let Some(op) = OpKind::from_str(span) {
+            TokenTyp::Op(op)
+        } else if let Some(reg) = Register::from_str(span) {
+            TokenTyp::Register(reg)
+        } else {
+            match span {
+                // syscalls
+                "SYS_EXIT" => TokenTyp::Syscall(SyscallKind::Exit),
+                "SYS_ALLOC_INIT" => TokenTyp::Syscall(SyscallKind::AllocInit),
+                "SYS_ALLOC_DEINIT" => TokenTyp::Syscall(SyscallKind::AllocDeInit),
+                "SYS_ALLOC_ALLOC" => TokenTyp::Syscall(SyscallKind::AllocAlloc),
+                "SYS_ALLOC_FREE" => TokenTyp::Syscall(SyscallKind::AllocFree),
+                "SYS_ALLOC_FREE_ALL" => TokenTyp::Syscall(SyscallKind::AllocFreeAll),
+                "SYS_ALLOC_STAT" => TokenTyp::Syscall(SyscallKind::AllocStat),
 
-            // registers
-            // TODO: dup code with Register::from_str
-            "zero" => TokenTyp::Register(Register::Zero),
-            "pc" => TokenTyp::Register(Register::Pc),
-            "ra" => TokenTyp::Register(Register::Ra),
-            "sp" => TokenTyp::Register(Register::Sp),
-            "t0" => TokenTyp::Register(Register::T0),
-            "t1" => TokenTyp::Register(Register::T1),
-            "t2" => TokenTyp::Register(Register::T2),
-            "t3" => TokenTyp::Register(Register::T3),
-            "t4" => TokenTyp::Register(Register::T4),
-            "t5" => TokenTyp::Register(Register::T5),
-            "t6" => TokenTyp::Register(Register::T6),
-            "a0" => TokenTyp::Register(Register::A0),
-            "a1" => TokenTyp::Register(Register::A1),
-            "a2" => TokenTyp::Register(Register::A2),
-            "a3" => TokenTyp::Register(Register::A3),
-            "a4" => TokenTyp::Register(Register::A4),
-            "a5" => TokenTyp::Register(Register::A5),
-            "a6" => TokenTyp::Register(Register::A6),
-            "a7" => TokenTyp::Register(Register::A7),
-            "s0" => TokenTyp::Register(Register::S0),
-            "s1" => TokenTyp::Register(Register::S1),
-            "s2" => TokenTyp::Register(Register::S2),
-            "s3" => TokenTyp::Register(Register::S3),
-            "s4" => TokenTyp::Register(Register::S4),
-            "s5" => TokenTyp::Register(Register::S5),
-            "s6" => TokenTyp::Register(Register::S6),
-            "s7" => TokenTyp::Register(Register::S7),
-            "s8" => TokenTyp::Register(Register::S8),
-            "s9" => TokenTyp::Register(Register::S9),
-            "s10" => TokenTyp::Register(Register::S10),
-            "s11" => TokenTyp::Register(Register::S11),
-            "z0" => TokenTyp::Register(Register::Z0),
+                // helpful constants
+                "UGRAN_SIZE" => TokenTyp::UnsignedInt(UGRAN_SIZE.into()),
+                "UADDR_SIZE" => TokenTyp::UnsignedInt(UADDR_SIZE.into()),
 
-            // syscalls
-            "SYS_EXIT" => TokenTyp::Syscall(SyscallKind::Exit),
-            "SYS_ALLOC_INIT" => TokenTyp::Syscall(SyscallKind::AllocInit),
-            "SYS_ALLOC_DEINIT" => TokenTyp::Syscall(SyscallKind::AllocDeInit),
-            "SYS_ALLOC_ALLOC" => TokenTyp::Syscall(SyscallKind::AllocAlloc),
-            "SYS_ALLOC_FREE" => TokenTyp::Syscall(SyscallKind::AllocFree),
-            "SYS_ALLOC_FREE_ALL" => TokenTyp::Syscall(SyscallKind::AllocFreeAll),
-            "SYS_ALLOC_STAT" => TokenTyp::Syscall(SyscallKind::AllocStat),
-
-            // helpful constants
-            "UGRAN_SIZE" => TokenTyp::UnsignedInt(UGRAN_SIZE.into()),
-            "UADDR_SIZE" => TokenTyp::UnsignedInt(UADDR_SIZE.into()),
-
-            _ => match span.parse::<UGran>() {
-                Ok(int) => TokenTyp::UnsignedInt(int),
-                Err(err) => {
-                    if *err.kind() == IntErrorKind::PosOverflow {
-                        return Err(LexErrTyp::InvalidUnsignedInt(err));
+                _ => match span.parse::<UGran>() {
+                    Ok(int) => TokenTyp::UnsignedInt(int),
+                    Err(err) => {
+                        if *err.kind() == IntErrorKind::PosOverflow {
+                            return Err(LexErrTyp::InvalidUnsignedInt(err));
+                        }
+                        TokenTyp::Identifier
                     }
-                    TokenTyp::Identifier
-                }
-            },
+                },
+            }
         };
         Ok(typ)
     }

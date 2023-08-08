@@ -359,31 +359,9 @@ impl OpKind {
             Self::Syscall => 0,
         }
     }
-}
 
-impl Ty for OpKind {
-    const LAYOUT: Layout = Layout {
-        size: 1,
-        align: Align::new(1).unwrap(),
-    };
-
-    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        Self::from_byte(u8::read(src, addr, valid)?)
-    }
-
-    fn write(
-        self,
-        dst: &mut [u8],
-        addr: Address,
-        valid: &mut BitSlice<u8>,
-    ) -> Result<(), Exception> {
-        self.to_byte().write(dst, addr, valid)
-    }
-}
-
-impl fmt::Display for OpKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
+    pub const fn display(self) -> &'static str {
+        match self {
             Self::Nop => "nop",
             Self::CGetAddr => "cgetaddr",
             Self::CSetAddr => "csetaddr",
@@ -434,8 +412,89 @@ impl fmt::Display for OpKind {
             Self::Bltu => "bltu",
             Self::Bgeu => "bgeu",
             Self::Syscall => "syscall",
-        };
-        f.write_str(s)
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "nop" => Some(Self::Nop),
+            "cgetaddr" => Some(Self::CGetAddr),
+            "csetaddr" => Some(Self::CSetAddr),
+            "cgetbound" => Some(Self::CGetBound),
+            "csetbound" => Some(Self::CSetBound),
+            "cgetperm" => Some(Self::CGetPerm),
+            "csetperm" => Some(Self::CSetPerm),
+            "cgetvalid" => Some(Self::CGetValid),
+            "cpy" => Some(Self::Cpy),
+            "loadi" => Some(Self::LoadI),
+            "loadu8" => Some(Self::LoadU8),
+            "loadu16" => Some(Self::LoadU16),
+            "loadu32" => Some(Self::LoadU32),
+            "loadu64" => Some(Self::LoadU64),
+            "loadu128" => Some(Self::LoadU128),
+            "loadc" => Some(Self::LoadC),
+            "store8" => Some(Self::Store8),
+            "store16" => Some(Self::Store16),
+            "store32" => Some(Self::Store32),
+            "store64" => Some(Self::Store64),
+            "store128" => Some(Self::Store128),
+            "storec" => Some(Self::StoreC),
+            "addi" => Some(Self::AddI),
+            "add" => Some(Self::Add),
+            "sub" => Some(Self::Sub),
+            "sltsi" => Some(Self::SltsI),
+            "sltui" => Some(Self::SltuI),
+            "slts" => Some(Self::Slts),
+            "sltu" => Some(Self::Sltu),
+            "xori" => Some(Self::XorI),
+            "xor" => Some(Self::Xor),
+            "ori" => Some(Self::OrI),
+            "or" => Some(Self::Or),
+            "andi" => Some(Self::AndI),
+            "and" => Some(Self::And),
+            "slli" => Some(Self::SllI),
+            "sll" => Some(Self::Sll),
+            "srli" => Some(Self::SrlI),
+            "srl" => Some(Self::Srl),
+            "srai" => Some(Self::SraI),
+            "sra" => Some(Self::Sra),
+            "jal" => Some(Self::Jal),
+            "jalr" => Some(Self::Jalr),
+            "beq" => Some(Self::Beq),
+            "bne" => Some(Self::Bne),
+            "blts" => Some(Self::Blts),
+            "bges" => Some(Self::Bges),
+            "bltu" => Some(Self::Bltu),
+            "bgeu" => Some(Self::Bgeu),
+            "syscall" => Some(Self::Syscall),
+            _ => None,
+        }
+    }
+}
+
+impl Ty for OpKind {
+    const LAYOUT: Layout = Layout {
+        size: 1,
+        align: Align::new(1).unwrap(),
+    };
+
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        Self::from_byte(u8::read(src, addr, valid)?)
+    }
+
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        self.to_byte().write(dst, addr, valid)
+    }
+}
+
+impl fmt::Display for OpKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.display())
     }
 }
 
