@@ -9,6 +9,8 @@ use anyhow::Context;
 use argh::FromArgs;
 use nu_ansi_term::{Color, Style};
 use tracing::{span, Level};
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::{fmt, prelude::*, reload};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
@@ -50,16 +52,20 @@ struct Args {
 }
 
 fn main() -> ExitCode {
-    tracing_subscriber::fmt::fmt()
-        .with_writer(stderr)
-        .with_max_level(Level::TRACE)
-        .with_timer(tracing_subscriber::fmt::time::uptime())
-        .pretty()
+    let (filter, reload_handle) = reload::Layer::new(LevelFilter::TRACE);
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(
+            fmt::Layer::new()
+                .with_writer(stderr)
+                .with_timer(tracing_subscriber::fmt::time::uptime())
+                .pretty(),
+        )
         .init();
 
     let args: Args = argh::from_env();
 
-    if let Err(err) = try_main(args) {
+    if let Err(err) = try_main(args, reload_handle) {
         _ = pretty_print_main_err(BufWriter::new(stderr()), err);
         ExitCode::FAILURE
     } else {
@@ -67,7 +73,10 @@ fn main() -> ExitCode {
     }
 }
 
-fn try_main(args: Args) -> anyhow::Result<()> {
+fn try_main(
+    args: Args,
+    log_handle: reload::Handle<LevelFilter, tracing_subscriber::Registry>,
+) -> anyhow::Result<()> {
     let span = span!(
         Level::TRACE,
         "main",
@@ -87,7 +96,7 @@ fn try_main(args: Args) -> anyhow::Result<()> {
 
     if args.debug == DebugMode::Always {
         tracing::info!("launching debugger before execution start");
-        args.debug.launch(&mut mem, None, &mut stdout)?;
+        args.debug.launch(&mut mem, None, log_handle, &mut stdout)?;
         tracing::info!("debugger yielded, terminating fruticose");
         return Ok(());
     }
@@ -100,7 +109,8 @@ fn try_main(args: Args) -> anyhow::Result<()> {
             Err(raised) => {
                 if args.debug == DebugMode::Error {
                     tracing::info!("launching debugger, exception raised");
-                    args.debug.launch(&mut mem, Some(raised), &mut stdout)?;
+                    args.debug
+                        .launch(&mut mem, Some(raised), log_handle, &mut stdout)?;
                     tracing::info!("debugger yielded, resuming exception handling");
                 }
                 return Err(raised.into());

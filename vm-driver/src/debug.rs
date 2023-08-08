@@ -1,3 +1,7 @@
+use anyhow::Context;
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::reload;
+
 use core::str::FromStr;
 use std::io::{self, BufRead, Write};
 
@@ -33,16 +37,18 @@ impl DebugMode {
         self,
         mem: &mut Memory,
         already_raised: Option<Exception>,
+        log_handle: reload::Handle<LevelFilter, tracing_subscriber::Registry>,
         out: W,
     ) -> anyhow::Result<()> {
         debug_assert_ne!(self, DebugMode::Never);
-        launch_inner(mem, already_raised, out)
+        launch_inner(mem, already_raised, log_handle, out)
     }
 }
 
 fn launch_inner<W: Write>(
     mem: &mut Memory,
     already_raised: Option<Exception>,
+    log_handle: reload::Handle<LevelFilter, tracing_subscriber::Registry>,
     mut out: W,
 ) -> anyhow::Result<()> {
     splash(&mut out)?;
@@ -56,9 +62,38 @@ fn launch_inner<W: Write>(
                 "help" | "h" => {
                     writeln!(out, "quit. quit.")?;
                     writeln!(out, "help. list commands.")?;
+                    writeln!(out, "log [on | off]. toggle logs.")?;
                     writeln!(out, "step [<count> | while]. execute the next Op(s).")?;
                     writeln!(out, "print <location>. print value at location.")?;
                     writeln!(out, "do <operation>. execute operation.")?;
+                }
+
+                "log" | "l" => {
+                    let want: bool = if let Some(state) = cmd.next() {
+                        match state {
+                            "on" | "true" | "t" => true,
+                            "off" | "false" | "f" => false,
+                            _ => {
+                                writeln!(out, "error: invalid logging state")?;
+                                continue;
+                            }
+                        }
+                    } else {
+                        let cur: bool = log_handle
+                            .with_current(|filter| *filter > LevelFilter::INFO)
+                            .context("Subscriber is gone??")?;
+                        !cur
+                    };
+                    let want_level = if want {
+                        LevelFilter::TRACE
+                    } else {
+                        LevelFilter::INFO
+                    };
+                    log_handle
+                        .modify(|filter| *filter = want_level)
+                        .context("Subscriber is gone??")?;
+
+                    writeln!(out, "{} logging", if want { "enabled" } else { "disabled" })?;
                 }
 
                 "step" | "s" => {
