@@ -3,6 +3,7 @@ use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::reload;
 
 use core::str::FromStr;
+use core::sync::atomic::{AtomicBool, Ordering};
 use std::io::{self, BufRead, Write};
 
 use fruticose_vm::exception::Exception;
@@ -51,6 +52,12 @@ fn launch_inner<W: Write>(
     log_handle: reload::Handle<LevelFilter, tracing_subscriber::Registry>,
     mut out: W,
 ) -> anyhow::Result<()> {
+    let stop_exec: &'static AtomicBool = Box::leak(Box::new(AtomicBool::new(false)));
+    ctrlc::set_handler(|| {
+        stop_exec.store(true, Ordering::Relaxed);
+    })
+    .context("failed to set Ctrl-C handler")?;
+
     splash(&mut out)?;
     loop {
         let input = readln(&mut out, "> ")?;
@@ -123,6 +130,10 @@ fn launch_inner<W: Write>(
                     let mut count: Option<u128> = Some(0); // none indicates overflow
                     let mut raised = None;
                     while remain != Some(0) {
+                        if stop_exec.swap(false, Ordering::Relaxed) {
+                            writeln!(out, "ctrl-c pressed, aborting step")?;
+                            break;
+                        }
                         if let Err(except) = mem.execute_next() {
                             raised = Some(except);
                             break;
