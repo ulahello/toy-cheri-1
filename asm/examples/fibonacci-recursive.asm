@@ -1,5 +1,4 @@
 _start:
-	; TODO: why does it raise invalid operation 0x55 when n is too high? or invalid register 85?
 	; loadi a2, 10 ; uncomment this to run outside of testing framework
 	jal ra, fib
 	jal zero, exit
