@@ -127,4 +127,19 @@ mod capability {
             .is_valid());
         assert!(!cap.set_perms(Permissions::all()).is_valid());
     }
+
+    #[test]
+    fn set_bounds() {
+        let cap = TaggedCapability::new(
+            Capability::new(Address(8), Address(8), Address(16), Permissions::all()),
+            true,
+        );
+        assert!(cap.set_bounds(Address(8), Address(16)).is_valid());
+        assert!(cap.set_bounds(Address(9), Address(10)).is_valid());
+        assert!(!cap.set_bounds(Address(7), Address(15)).is_valid());
+        assert!(!cap.set_bounds(Address(9), Address(17)).is_valid());
+        assert!(!cap.set_bounds(Address(0), Address(2)).is_valid());
+        assert!(cap.set_bounds(Address(16), Address(16)).is_valid());
+        assert!(!cap.set_bounds(Address(16), Address(17)).is_valid());
+    }
 }
