@@ -312,13 +312,13 @@ impl TaggedCapability {
         /* TODO: is it okay if `endb < start`? should we invalidate it now or
          * wait for access to raise exception? */
         // HACK: address should be const comparable
-        let valid = start.get() >= self.capa.start.get() && endb.get() <= self.capa.endb.get();
+        let valid = start.get() >= self.start().get() && endb.get() <= self.endb().get();
         Self {
             capa: Capability {
-                addr: self.capa.addr,
+                addr: self.addr(),
                 start,
                 endb,
-                perms: self.capa.perms,
+                perms: self.perms(),
             },
             valid,
         }
