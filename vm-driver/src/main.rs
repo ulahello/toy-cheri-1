@@ -133,7 +133,7 @@ fn assemble_src(src: &str, path: Option<&Path>) -> anyhow::Result<Vec<Op>> {
     let span = span!(Level::TRACE, "assemble_src");
     let _guard = span.enter();
 
-    let parser = Parser2::new(&src);
+    let parser = Parser2::new(src);
     let mut ops = Vec::new();
     let mut err_count: usize = 0;
     let mut err_out = BufWriter::new(stderr());
