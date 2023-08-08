@@ -138,6 +138,7 @@ fn launch_inner<W: Write>(
                     // HACK: assembler api doesn't let me expect the contents of a line, excluding the newline
                     let src = format!("{src}\n");
                     if let Ok(ops) = super::assemble_src(&src, None) {
+                        debug_assert!(ops.len() <= 1);
                         for op in ops {
                             if let Err(raised) = mem.execute_op(op, None, false) {
                                 pretty_println_exception(&mut out, raised)?;
