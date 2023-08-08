@@ -127,17 +127,18 @@ fn assemble_init(init: &Path) -> anyhow::Result<Vec<Op>> {
     let parser = Parser2::new(&init_src);
     let mut ops = Vec::new();
     let mut err_count: usize = 0;
+    let mut err_out = BufWriter::new(stderr());
     for try_op in parser {
         match try_op {
             Ok(op) => ops.push(op),
             Err(err) => {
                 err_count += 1;
-                let mut err_out = BufWriter::new(stderr());
                 pretty_print_parse_err(&mut err_out, init, err)?;
                 writeln!(err_out)?;
             }
         }
     }
+    err_out.flush()?;
     if err_count > 0 {
         anyhow::bail!(
             "failed to assemble init program due to {err_count} previous error{}",
