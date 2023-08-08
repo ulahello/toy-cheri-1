@@ -221,7 +221,7 @@ pub fn deinit(ator: TaggedCapability, mem: &mut Memory) -> Result<TaggedCapabili
         }
     }
     if header.flags.contains(InitFlags::INIT_ON_FREE) {
-        mem.memset(ator, ator.len(), UNINIT_BYTE)?;
+        mem.memset(ator, ator.span_len(), UNINIT_BYTE)?;
     }
     revoke::by_bounds(mem, ator.start(), ator.endb())?;
     Ok(ator)
@@ -248,7 +248,7 @@ pub fn alloc(
         }
     };
     if header.flags.contains(InitFlags::INIT_ON_ALLOC) {
-        mem.memset(ation, ation.capability().len(), UNINIT_BYTE)?;
+        mem.memset(ation, ation.capability().span_len(), UNINIT_BYTE)?;
     }
     Ok(ation)
 }

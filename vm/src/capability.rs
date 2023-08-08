@@ -208,12 +208,8 @@ impl Capability {
         self.perms
     }
 
-    pub const fn len(&self) -> UAddr {
+    pub const fn span_len(&self) -> UAddr {
         self.endb().get().saturating_sub(self.start().get())
-    }
-
-    pub const fn is_empty(&self) -> bool {
-        self.len() == 0
     }
 }
 
@@ -343,12 +339,8 @@ impl TaggedCapability {
         root
     }
 
-    pub const fn len(&self) -> UAddr {
-        self.capability().len()
-    }
-
-    pub const fn is_empty(&self) -> bool {
-        self.capability().is_empty()
+    pub const fn span_len(&self) -> UAddr {
+        self.capa.span_len()
     }
 
     pub const fn access(&self, kind: MemAccessKind, align: Align, len: Option<UAddr>) -> MemAccess {
