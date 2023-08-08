@@ -167,11 +167,9 @@ pub enum Register {
 
 impl Register {
     pub const LAYOUT: Layout = UGran::LAYOUT;
-}
 
-impl fmt::Display for Register {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
+    pub const fn display(self) -> &'static str {
+        match self {
             Self::Zero => "zero",
             Self::Pc => "pc",
             Self::Ra => "ra",
@@ -204,7 +202,50 @@ impl fmt::Display for Register {
             Self::S10 => "s10",
             Self::S11 => "s11",
             Self::Z0 => "z0",
-        };
-        f.write_str(s)
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "zero" => Some(Self::Zero),
+            "pc" => Some(Self::Pc),
+            "ra" => Some(Self::Ra),
+            "sp" => Some(Self::Sp),
+            "t0" => Some(Self::T0),
+            "t1" => Some(Self::T1),
+            "t2" => Some(Self::T2),
+            "t3" => Some(Self::T3),
+            "t4" => Some(Self::T4),
+            "t5" => Some(Self::T5),
+            "t6" => Some(Self::T6),
+            "a0" => Some(Self::A0),
+            "a1" => Some(Self::A1),
+            "a2" => Some(Self::A2),
+            "a3" => Some(Self::A3),
+            "a4" => Some(Self::A4),
+            "a5" => Some(Self::A5),
+            "a6" => Some(Self::A6),
+            "a7" => Some(Self::A7),
+            "s0" => Some(Self::S0),
+            "s1" => Some(Self::S1),
+            "s2" => Some(Self::S2),
+            "s3" => Some(Self::S3),
+            "s4" => Some(Self::S4),
+            "s5" => Some(Self::S5),
+            "s6" => Some(Self::S6),
+            "s7" => Some(Self::S7),
+            "s8" => Some(Self::S8),
+            "s9" => Some(Self::S9),
+            "s10" => Some(Self::S10),
+            "s11" => Some(Self::S11),
+            "z0" => Some(Self::Z0),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for Register {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.display())
     }
 }

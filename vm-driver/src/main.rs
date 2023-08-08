@@ -1,3 +1,5 @@
+mod debug;
+
 #[cfg(test)]
 mod tests;
 
@@ -9,7 +11,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
 use core::num::IntErrorKind;
-use std::io::{stderr, BufWriter, Write};
+use std::io::{stderr, stdout, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::{fs, io};
@@ -23,7 +25,7 @@ use fruticose_vm::int::UAddr;
 use fruticose_vm::mem::Memory;
 use fruticose_vm::op::Op;
 
-// TODOOO: debugging
+use crate::debug::DebugMode;
 
 /// Fruticose virtual machine
 #[derive(FromArgs)]
@@ -35,6 +37,10 @@ struct Args {
     /// stack size in bytes for init program
     #[argh(option, short = 's', default = "1024")]
     stack_size: UAddr,
+
+    /// choose if/how to run the debugger
+    #[argh(option, short = 'd', default = "DebugMode::Never")]
+    debug: DebugMode,
 
     /// path to init program assembly
     #[argh(option, short = 'i')]
@@ -51,7 +57,7 @@ fn main() -> ExitCode {
 
     let args: Args = argh::from_env();
 
-    if let Err(err) = try_main(&args) {
+    if let Err(err) = try_main(args) {
         _ = pretty_print_main_err(BufWriter::new(stderr()), err);
         ExitCode::FAILURE
     } else {
@@ -59,9 +65,17 @@ fn main() -> ExitCode {
     }
 }
 
-fn try_main(args: &Args) -> anyhow::Result<()> {
-    let span = span!(Level::TRACE, "main", granules = args.granules);
+fn try_main(args: Args) -> anyhow::Result<()> {
+    let span = span!(
+        Level::TRACE,
+        "main",
+        granules = args.granules,
+        stack_size = args.stack_size,
+        debug_mode = format_args!("{:?}", args.debug),
+    );
     let _guard = span.enter();
+
+    let mut stdout = BufWriter::new(stdout());
 
     let mut mem = {
         let init: Vec<Op> = assemble_init(&args.init).context("failed to load init program")?;
@@ -69,13 +83,25 @@ fn try_main(args: &Args) -> anyhow::Result<()> {
             .context("failed to instantiate memory")?
     };
 
+    if args.debug == DebugMode::Always {
+        tracing::info!("launching debugger before execution start");
+        args.debug.launch(&mut mem, None, &mut stdout)?;
+        tracing::info!("debugger yielded, terminating fruticose");
+        return Ok(());
+    }
+
     tracing::info!("execution start");
     loop {
         match mem.execute_op() {
             Ok(()) => (),
             Err(Exception::ProcessExit) => break,
-            Err(other) => {
-                return Err(other.into());
+            Err(raised) => {
+                if args.debug == DebugMode::Error {
+                    tracing::info!("launching debugger, exception raised");
+                    args.debug.launch(&mut mem, Some(raised), &mut stdout)?;
+                    tracing::info!("debugger yielded, resuming exception handling");
+                }
+                return Err(raised.into());
             }
         }
     }

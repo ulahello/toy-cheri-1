@@ -146,6 +146,7 @@ impl<'s> Lexer<'s> {
             "syscall" => TokenTyp::Op(OpKind::Syscall),
 
             // registers
+            // TODO: dup code with Register::from_str
             "zero" => TokenTyp::Register(Register::Zero),
             "pc" => TokenTyp::Register(Register::Pc),
             "ra" => TokenTyp::Register(Register::Ra),
