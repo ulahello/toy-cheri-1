@@ -45,8 +45,7 @@ fn launch_inner<W: Write>(
     already_raised: Option<Exception>,
     mut out: W,
 ) -> anyhow::Result<()> {
-    writeln!(out, "==== fruticose debugger ===")?;
-    writeln!(out, "type 'h' or 'help' for help")?;
+    splash(&mut out)?;
     loop {
         let input = readln(&mut out, "> ")?;
         let mut cmd = input.trim().split_ascii_whitespace();
@@ -152,6 +151,18 @@ fn launch_inner<W: Write>(
         }
     }
     out.flush()?;
+    Ok(())
+}
+
+fn splash<W: Write>(mut f: W) -> io::Result<()> {
+    let line1 = " fruticose debugger ";
+    let line2 = "type 'h' or 'help' for help";
+    writeln!(
+        f,
+        "{line1:=^len$}",
+        len = line2.len() /* assuming line2 is ascii */
+    )?;
+    writeln!(f, "{line2}")?;
     Ok(())
 }
 
