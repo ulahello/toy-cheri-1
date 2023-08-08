@@ -77,10 +77,16 @@ mod capability {
         assert!(!eq.is_bounded_with_len(9));
         assert!(!eq.is_bounded_with_len(18));
 
-        let oob = normal.set_addr(Address(32));
-        assert!(!oob.is_bounded_with_len(0));
-        assert!(!oob.is_bounded_with_len(8));
-        assert!(!oob.is_bounded_with_len(9));
-        assert!(!oob.is_bounded_with_len(18));
+        let oob_right = normal.set_addr(Address(32));
+        assert!(!oob_right.is_bounded_with_len(0));
+        assert!(!oob_right.is_bounded_with_len(8));
+        assert!(!oob_right.is_bounded_with_len(9));
+        assert!(!oob_right.is_bounded_with_len(18));
+
+        let oob_left = Capability::new(Address(0), Address(16), Address(32), Permissions::empty());
+        assert!(!oob_left.is_bounded_with_len(0));
+        assert!(!oob_left.is_bounded_with_len(8));
+        assert!(!oob_left.is_bounded_with_len(9));
+        assert!(!oob_left.is_bounded_with_len(18));
     }
 }

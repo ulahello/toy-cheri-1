@@ -214,7 +214,8 @@ impl Capability {
 
     pub const fn is_bounded(&self) -> bool {
         // HACK: addr should be const comparable
-        self.addr().get() <= self.endb().get()
+        let addr = self.addr().get();
+        addr >= self.start().get() && addr <= self.endb().get()
     }
 
     pub const fn is_bounded_with_len(&self, len: UAddr) -> bool {
@@ -222,7 +223,7 @@ impl Capability {
         if len > max_len {
             return false;
         }
-        self.set_addr(self.addr().add(len)).is_bounded()
+        self.is_bounded() && self.set_addr(self.addr().add(len)).is_bounded()
     }
 }
 
