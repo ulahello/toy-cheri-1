@@ -55,7 +55,7 @@ mod revoke {
 }
 
 mod capability {
-    use crate::capability::{Address, Capability, Permissions};
+    use crate::capability::{Address, Capability, Permissions, TaggedCapability};
 
     #[test]
     fn is_bounded() {
@@ -88,5 +88,43 @@ mod capability {
         assert!(!oob_left.is_bounded_with_len(8));
         assert!(!oob_left.is_bounded_with_len(9));
         assert!(!oob_left.is_bounded_with_len(18));
+    }
+
+    #[test]
+    fn set_perms() {
+        let mut cap = TaggedCapability::new(
+            Capability::new(Address(0), Address(0), Address(16), Permissions::all()),
+            true,
+        );
+
+        assert!(cap.set_perms(Permissions::READ).is_valid());
+        assert!(cap.set_perms(Permissions::WRITE).is_valid());
+        assert!(cap.set_perms(Permissions::EXEC).is_valid());
+        assert!(cap
+            .set_perms(Permissions::READ | Permissions::WRITE)
+            .is_valid());
+        assert!(cap
+            .set_perms(Permissions::READ | Permissions::EXEC)
+            .is_valid());
+        assert!(cap
+            .set_perms(Permissions::WRITE | Permissions::EXEC)
+            .is_valid());
+        assert!(cap.set_perms(Permissions::all()).is_valid());
+
+        cap = cap.set_perms(Permissions::READ | Permissions::EXEC);
+
+        assert!(cap.set_perms(Permissions::READ).is_valid());
+        assert!(!cap.set_perms(Permissions::WRITE).is_valid());
+        assert!(cap.set_perms(Permissions::EXEC).is_valid());
+        assert!(!cap
+            .set_perms(Permissions::READ | Permissions::WRITE)
+            .is_valid());
+        assert!(cap
+            .set_perms(Permissions::READ | Permissions::EXEC)
+            .is_valid());
+        assert!(!cap
+            .set_perms(Permissions::WRITE | Permissions::EXEC)
+            .is_valid());
+        assert!(!cap.set_perms(Permissions::all()).is_valid());
     }
 }
