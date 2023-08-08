@@ -6,14 +6,13 @@ _start:
 ; fn fib(n: UGran) UGran
 fib:
 	;; push stack frame
-	; sp.addr -= UADDR_SIZE
-	loadi t0, UADDR_SIZE
+	; sp.addr -= UGRAN_SIZE
+	loadi t0, UGRAN_SIZE
 	cgetaddr t1, sp
 	sub t1, t1, t0
 	csetaddr sp, t1
 	; write return address to stack frame
-	cgetaddr t2, ra
-	store64 sp, t2 ; @port
+	storec sp, ra
 	; sp.addr -= UGRAN_SIZE
 	loadi t0, UGRAN_SIZE
 	cgetaddr t1, sp
@@ -87,11 +86,10 @@ fib_ret:
 	addi t1, t1, UGRAN_SIZE
 	csetaddr sp, t1
 	; read return address
-	loadu64 t0, sp
-	csetaddr ra, t0 ; set return address
-	; sp.addr += UADDR_SIZE
+	loadc ra, sp
+	; sp.addr += UGRAN_SIZE
 	cgetaddr t1, sp
-	addi t1, t1, UADDR_SIZE
+	addi t1, t1, UGRAN_SIZE
 	csetaddr sp, t1
 	; jump to return address
 	cpy pc, ra
