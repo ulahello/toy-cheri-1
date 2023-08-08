@@ -53,3 +53,34 @@ mod revoke {
         Ok(())
     }
 }
+
+mod capability {
+    use crate::capability::{Address, Capability, Permissions};
+
+    #[test]
+    fn is_bounded() {
+        let normal = Capability::new(Address(8), Address(0), Address(16), Permissions::empty());
+        assert!(normal.is_bounded_with_len(0));
+        assert!(normal.is_bounded_with_len(8));
+        assert!(!normal.is_bounded_with_len(9));
+        assert!(!normal.is_bounded_with_len(18));
+
+        let reverse = Capability::new(Address(8), Address(16), Address(0), Permissions::empty());
+        assert!(!reverse.is_bounded_with_len(0));
+        assert!(!reverse.is_bounded_with_len(8));
+        assert!(!reverse.is_bounded_with_len(9));
+        assert!(!reverse.is_bounded_with_len(18));
+
+        let eq = Capability::new(Address(16), Address(0), Address(16), Permissions::empty());
+        assert!(eq.is_bounded_with_len(0));
+        assert!(!eq.is_bounded_with_len(8));
+        assert!(!eq.is_bounded_with_len(9));
+        assert!(!eq.is_bounded_with_len(18));
+
+        let oob = normal.set_addr(Address(32));
+        assert!(!oob.is_bounded_with_len(0));
+        assert!(!oob.is_bounded_with_len(8));
+        assert!(!oob.is_bounded_with_len(9));
+        assert!(!oob.is_bounded_with_len(18));
+    }
+}

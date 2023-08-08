@@ -211,6 +211,19 @@ impl Capability {
     pub const fn span_len(&self) -> UAddr {
         self.endb().get().saturating_sub(self.start().get())
     }
+
+    pub const fn is_bounded(&self) -> bool {
+        // HACK: addr should be const comparable
+        self.addr().get() <= self.endb().get()
+    }
+
+    pub const fn is_bounded_with_len(&self, len: UAddr) -> bool {
+        let max_len = self.endb().get().saturating_sub(self.addr().get());
+        if len > max_len {
+            return false;
+        }
+        self.set_addr(self.addr().add(len)).is_bounded()
+    }
 }
 
 impl Ty for Capability {
@@ -341,6 +354,14 @@ impl TaggedCapability {
 
     pub const fn span_len(&self) -> UAddr {
         self.capa.span_len()
+    }
+
+    pub const fn is_bounded(&self) -> bool {
+        self.capa.is_bounded()
+    }
+
+    pub const fn is_bounded_with_len(&self, len: UAddr) -> bool {
+        self.capa.is_bounded_with_len(len)
     }
 
     pub const fn access(&self, kind: MemAccessKind, align: Align, len: Option<UAddr>) -> MemAccess {
