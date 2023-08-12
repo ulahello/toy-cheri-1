@@ -521,5 +521,5 @@ impl Memory {
 }
 
 fn reg(tcap: TaggedCapability) -> u8 {
-    tcap.capability().to_ugran() as u8
+    tcap.to_ugran() as u8
 }

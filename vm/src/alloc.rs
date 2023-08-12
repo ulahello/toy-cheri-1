@@ -248,7 +248,7 @@ pub fn alloc(
         }
     };
     if header.flags.contains(InitFlags::INIT_ON_ALLOC) {
-        mem.memset(ation, ation.capability().span_len(), UNINIT_BYTE)?;
+        mem.memset(ation, ation.span_len(), UNINIT_BYTE)?;
     }
     Ok(ation)
 }
@@ -271,7 +271,7 @@ pub fn free_all(ator: TaggedCapability, mem: &mut Memory) -> Result<(), Exceptio
             bump.free_all();
             revoke::by_bounds(mem, bump.inner.start(), bump.inner.endb())?;
             if header.flags.contains(InitFlags::INIT_ON_FREE) {
-                mem.memset(bump.inner, bump.inner.capability().span_len(), UNINIT_BYTE)?;
+                mem.memset(bump.inner, bump.inner.span_len(), UNINIT_BYTE)?;
             }
             mem.write(bump_cap, bump)?;
         }
