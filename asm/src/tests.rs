@@ -19,38 +19,12 @@ fn exit_lex() {
     assert_eq!(
         lexer.next(),
         Some(Ok(Token {
-            typ: TokenTyp::Op(OpKind::Nop),
-            span: Span {
-                line: 0,
-                col_idx: 0,
-                len: 3,
-                line_start: 0,
-                src
-            }
-        }))
-    );
-    assert_eq!(
-        lexer.next(),
-        Some(Ok(Token {
-            typ: TokenTyp::Newline,
-            span: Span {
-                line: 0,
-                col_idx: 22,
-                len: 1,
-                line_start: 0,
-                src,
-            }
-        }))
-    );
-    assert_eq!(
-        lexer.next(),
-        Some(Ok(Token {
             typ: TokenTyp::Op(OpKind::LoadI),
             span: Span {
-                line: 1,
+                line: 0,
                 col_idx: 0,
                 len: 5,
-                line_start: 23,
+                line_start: 0,
                 src
             }
         }))
@@ -60,10 +34,10 @@ fn exit_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Register(Register::A2),
             span: Span {
-                line: 1,
+                line: 0,
                 col_idx: 6,
                 len: 2,
-                line_start: 23,
+                line_start: 0,
                 src,
             }
         }))
@@ -73,10 +47,10 @@ fn exit_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Comma,
             span: Span {
-                line: 1,
+                line: 0,
                 col_idx: 8,
                 len: 1,
-                line_start: 23,
+                line_start: 0,
                 src
             }
         }))
@@ -86,10 +60,10 @@ fn exit_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Syscall(SyscallKind::Exit),
             span: Span {
-                line: 1,
+                line: 0,
                 col_idx: 10,
                 len: 8,
-                line_start: 23,
+                line_start: 0,
                 src
             }
         }))
@@ -99,10 +73,10 @@ fn exit_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Newline,
             span: Span {
-                line: 1,
-                col_idx: 18,
+                line: 0,
+                col_idx: 36,
                 len: 1,
-                line_start: 23,
+                line_start: 0,
                 src
             }
         }))
@@ -112,10 +86,10 @@ fn exit_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Op(OpKind::Syscall),
             span: Span {
-                line: 2,
+                line: 1,
                 col_idx: 0,
                 len: 7,
-                line_start: 42,
+                line_start: 37,
                 src
             }
         }))
@@ -125,10 +99,10 @@ fn exit_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Newline,
             span: Span {
-                line: 2,
+                line: 1,
                 col_idx: 7,
                 len: 1,
-                line_start: 42,
+                line_start: 37,
                 src
             }
         }))
@@ -138,10 +112,10 @@ fn exit_lex() {
         Some(Ok(Token {
             typ: TokenTyp::Eof,
             span: Span {
-                line: 3,
+                line: 2,
                 col_idx: 0,
                 len: 0,
-                line_start: 50,
+                line_start: 45,
                 src,
             },
         }))
@@ -153,15 +127,6 @@ fn exit_lex() {
 fn exit_parse2() {
     let src = EXIT;
     let mut parser = Parser2::new(src);
-    assert_eq!(
-        parser.next(),
-        Some(Ok(Op {
-            kind: OpKind::Nop,
-            op1: TaggedCapability::INVALID,
-            op2: TaggedCapability::INVALID,
-            op3: TaggedCapability::INVALID,
-        }))
-    );
     assert_eq!(
         parser.next(),
         Some(Ok(Op {

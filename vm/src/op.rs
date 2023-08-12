@@ -12,12 +12,9 @@ use crate::exception::Exception;
 #[repr(u8)]
 /// Enumeration over all operations.
 pub enum OpKind {
-    /// No-op.
-    Nop = 0,
-
     /// Load the address value from the capability at register `op2` and store
     /// it in register `op1`.
-    CGetAddr,
+    CGetAddr = 1,
 
     /// Assign the address value at register `op2` to the capability in register
     /// `op1`.
@@ -251,7 +248,6 @@ impl OpKind {
 
     pub const fn from_byte(byte: u8) -> Result<Self, Exception> {
         match byte {
-            0 => Ok(Self::Nop),
             1 => Ok(Self::CGetAddr),
             2 => Ok(Self::CSetAddr),
             3 => Ok(Self::CGetBound),
@@ -307,7 +303,6 @@ impl OpKind {
 
     pub const fn operand_count(self) -> u8 {
         match self {
-            Self::Nop => 0,
             Self::CGetAddr => 2,
             Self::CSetAddr => 2,
             Self::CGetBound => 3,
@@ -362,7 +357,6 @@ impl OpKind {
 
     pub const fn display(self) -> &'static str {
         match self {
-            Self::Nop => "nop",
             Self::CGetAddr => "cgetaddr",
             Self::CSetAddr => "csetaddr",
             Self::CGetBound => "cgetbound",
@@ -417,7 +411,6 @@ impl OpKind {
 
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "nop" => Some(Self::Nop),
             "cgetaddr" => Some(Self::CGetAddr),
             "csetaddr" => Some(Self::CSetAddr),
             "cgetbound" => Some(Self::CGetBound),

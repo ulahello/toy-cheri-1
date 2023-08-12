@@ -63,8 +63,6 @@ impl Memory {
         tracing::trace!("executing {op}");
 
         match op.kind {
-            OpKind::Nop => (),
-
             OpKind::CGetAddr => {
                 let dst = reg(op.op1);
                 let tcap = self.regs.read(&self.tags, reg(op.op2))?;

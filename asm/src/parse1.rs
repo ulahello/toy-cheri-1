@@ -144,7 +144,6 @@ pub const fn type_signature(op: OpKind) -> [Option<OperandType>; 3] {
     use OperandType::*;
 
     match op {
-        OpKind::Nop => sig(op, []),
         OpKind::CGetAddr => sig(op, [Register, Register]),
         OpKind::CSetAddr => sig(op, [Register, Register]),
         OpKind::CGetBound => sig(op, [Register, Register, Register]),
