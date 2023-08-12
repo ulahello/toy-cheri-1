@@ -19,7 +19,7 @@ fib:
 	sub t1, t1, t0
 	csetaddr sp, t1
 	; write n to stack frame
-	store128 sp, a2 ; @port
+	store64 sp, a2 ; @port
 	; sp.addr -= UGRAN_SIZE
 	loadi t0, UGRAN_SIZE
 	cgetaddr t1, sp
@@ -80,7 +80,7 @@ fib_ret:
 	addi t1, t1, UGRAN_SIZE
 	csetaddr sp, t1
 	; read n
-	loadu128 a2, sp ; @port
+	loadu64 a2, sp ; @port
 	; sp.addr += UGRAN_SIZE
 	cgetaddr t1, sp
 	addi t1, t1, UGRAN_SIZE

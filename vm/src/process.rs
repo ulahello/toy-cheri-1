@@ -159,13 +159,6 @@ impl Memory {
                 self.regs.write_ty(&mut self.tags, dst, val)?;
             }
 
-            OpKind::LoadU128 => {
-                let dst = reg(op.op1);
-                let src = self.regs.read(&self.tags, reg(op.op2))?;
-                let val: u128 = self.read(src)?;
-                self.regs.write_ty(&mut self.tags, dst, val)?;
-            }
-
             OpKind::LoadC => {
                 let dst = reg(op.op1);
                 let src = self.regs.read(&self.tags, reg(op.op2))?;
@@ -198,13 +191,6 @@ impl Memory {
                 let dst = self.regs.read(&self.tags, reg(op.op1))?;
                 let src = reg(op.op2);
                 let val: u64 = self.regs.read_data(src)? as _;
-                self.write(dst, val)?;
-            }
-
-            OpKind::Store128 => {
-                let dst = self.regs.read(&self.tags, reg(op.op1))?;
-                let src = reg(op.op2);
-                let val: u128 = self.regs.read_data(src)? as _;
                 self.write(dst, val)?;
             }
 

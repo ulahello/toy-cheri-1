@@ -1,9 +1,9 @@
 use core::mem;
 
-pub type UGran = u128;
-pub type SGran = i128;
-pub type UAddr = u64;
-pub type SAddr = i64;
+pub type UGran = u64;
+pub type SGran = i64;
+pub type UAddr = u16;
+pub type SAddr = i16;
 
 pub const UADDR_SIZE: u8 = mem::size_of::<UAddr>() as _;
 pub const UGRAN_SIZE: u8 = mem::size_of::<UGran>() as _;

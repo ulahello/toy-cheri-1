@@ -69,11 +69,9 @@ macro_rules! int_impl {
 int_impl!(UGran);
 int_impl!(UAddr);
 int_impl!(u8);
-int_impl!(u16);
 int_impl!(u32);
 
 int_impl!(SGran);
 int_impl!(SAddr);
 int_impl!(i8);
-int_impl!(i16);
 int_impl!(i32);

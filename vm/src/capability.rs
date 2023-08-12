@@ -16,7 +16,7 @@ use crate::int::{gran_sign, SAddr, UAddr, UGran, UGRAN_SIZE, UNINIT};
 pub struct Address(pub UAddr);
 
 impl Address {
-    pub const BITS: u8 = 40;
+    pub const BITS: u8 = 16;
 
     pub const fn add(self, offset: UAddr) -> Self {
         Self(self.0.wrapping_add(offset))
@@ -441,7 +441,7 @@ impl fmt::Debug for TaggedCapability {
 
 bitflags! {
     #[derive(Clone, Copy, PartialEq, Eq)]
-    pub struct Permissions: u8 {
+    pub struct Permissions: u16 {
         const READ = 0b00000001;
         const WRITE = 0b00000010;
         const EXEC = 0b00000100;
@@ -449,7 +449,7 @@ bitflags! {
 }
 
 impl Permissions {
-    pub const BITS: u8 = 8;
+    pub const BITS: u8 = 16;
 
     pub const fn r(self) -> bool {
         self.contains(Self::READ)
@@ -473,10 +473,10 @@ impl Permissions {
 }
 
 impl Ty for Permissions {
-    const LAYOUT: Layout = u8::LAYOUT;
+    const LAYOUT: Layout = u16::LAYOUT;
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        Ok(Self::from_bits_truncate(u8::read(src, addr, valid)?))
+        Ok(Self::from_bits_truncate(u16::read(src, addr, valid)?))
     }
 
     fn write(
@@ -485,7 +485,7 @@ impl Ty for Permissions {
         addr: Address,
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
-        let repr: u8 = self.bits();
+        let repr: u16 = self.bits();
         repr.write(dst, addr, valid)
     }
 }

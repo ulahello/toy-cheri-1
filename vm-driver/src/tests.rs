@@ -98,7 +98,7 @@ mod exec {
         let ops = assemble(FIB_ITER).unwrap();
         let mut mem = Memory::new(1024, 1024, ops.iter()).unwrap();
         let pc = mem.regs.read(&mem.tags, Register::Pc as _)?;
-        for n in 0..100 {
+        for n in 0..94 {
             println!("fib(n = {n})");
             mem.regs.write(&mut mem.tags, Register::Pc as _, pc)?; // reset execution
             mem.regs.write_data(&mut mem.tags, Register::A2 as _, n)?;
