@@ -356,4 +356,21 @@ mod capability {
             }
         }
     }
+
+    #[test]
+    fn mutate_sealed() {
+        let sealed = TaggedCapability::new(
+            Capability::new(
+                Address(0),
+                Address(0),
+                Address(16),
+                Permissions::READ | Permissions::WRITE,
+                OType::from_addr(Address(256)).unwrap(),
+            ),
+            true,
+        );
+        assert!(!sealed.set_addr(Address(2)).is_valid());
+        assert!(!sealed.set_perms(Permissions::empty()).is_valid());
+        assert!(!sealed.set_bounds(sealed.start(), sealed.endb()).is_valid());
+    }
 }
