@@ -56,6 +56,8 @@ mod revoke {
 }
 
 mod capability {
+    use crate::abi::Align;
+    use crate::access::MemAccessKind;
     use crate::capability::{Address, Capability, OType, Permissions, TaggedCapability};
 
     #[test]
@@ -372,5 +374,36 @@ mod capability {
         assert!(!sealed.set_addr(Address(2)).is_valid());
         assert!(!sealed.set_perms(Permissions::empty()).is_valid());
         assert!(!sealed.set_bounds(sealed.start(), sealed.endb()).is_valid());
+    }
+
+    #[test]
+    fn use_sealed() {
+        let sealed = TaggedCapability::new(
+            Capability::new(
+                Address(0),
+                Address(0),
+                Address(16),
+                Permissions::READ | Permissions::WRITE,
+                OType::from_addr(Address(256)).unwrap(),
+            ),
+            true,
+        );
+        let access = |cap: TaggedCapability| {
+            cap.check_access(MemAccessKind::Read, Align::new(1).unwrap(), Some(16))
+        };
+        assert!(access(sealed).is_err());
+        let unsealed = sealed.unseal(TaggedCapability::new(
+            Capability::new(
+                Address(256),
+                Address(256),
+                Address(512),
+                Permissions::UNSEAL,
+                OType::UNSEALED,
+            ),
+            true,
+        ));
+        assert!(unsealed.is_valid());
+        assert!(unsealed.otype().is_unsealed());
+        assert!(access(unsealed).is_ok());
     }
 }
