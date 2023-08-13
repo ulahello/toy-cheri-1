@@ -498,7 +498,7 @@ impl OType {
     /// Addresses with this alignment are representable as object types.
     pub const VALID_ALIGN: Align = Align::from_repr(Address::BITS - Self::BITS).unwrap();
 
-    const GRANULARITY: Align = Align::from_repr(Self::BITS as _).unwrap();
+    const ALIGNED_COUNT: Align = Align::from_repr(Self::BITS as _).unwrap();
 
     pub const UNSEALED: Self = Self(u8::MAX);
 
@@ -508,7 +508,7 @@ impl OType {
 
     pub const fn try_new(addr: Address) -> Option<Self> {
         if addr.is_aligned_to(Self::VALID_ALIGN) {
-            Some(Self::new((addr.get() / Self::GRANULARITY.get()) as u8))
+            Some(Self::new((addr.get() / Self::ALIGNED_COUNT.get()) as u8))
         } else {
             None
         }
@@ -519,7 +519,7 @@ impl OType {
     }
 
     pub const fn get_addr(self) -> Address {
-        Address(self.get() as UAddr * Self::GRANULARITY.get())
+        Address(self.get() as UAddr * Self::ALIGNED_COUNT.get())
     }
 
     pub const fn is_sealed(self) -> bool {
