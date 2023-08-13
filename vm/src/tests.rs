@@ -269,4 +269,91 @@ mod capability {
             }
         }
     }
+
+    #[test]
+    fn unseal() {
+        for (cap, unsealer, expect_ok) in [
+            (
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(0),
+                        Address(0),
+                        Address(16),
+                        Permissions::READ | Permissions::WRITE,
+                        OType::try_new(Address(256)).unwrap(),
+                    ),
+                    true,
+                ),
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(256),
+                        Address(256),
+                        Address(320),
+                        Permissions::UNSEAL,
+                        OType::UNSEALED,
+                    ),
+                    true,
+                ),
+                true,
+            ),
+            (
+                TaggedCapability::INVALID,
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(256),
+                        Address(256),
+                        Address(320),
+                        Permissions::UNSEAL,
+                        OType::UNSEALED,
+                    ),
+                    true,
+                ),
+                false,
+            ),
+            (
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(0),
+                        Address(0),
+                        Address(16),
+                        Permissions::all(),
+                        OType::UNSEALED,
+                    ),
+                    true,
+                ),
+                TaggedCapability::INVALID,
+                false,
+            ),
+            (
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(0),
+                        Address(0),
+                        Address(16),
+                        Permissions::READ | Permissions::WRITE,
+                        OType::try_new(Address(256)).unwrap(),
+                    ),
+                    true,
+                ),
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(64), // not aligned to OType::VALID_ALIGN
+                        Address(128),
+                        Address(128),
+                        Permissions::SEAL,
+                        OType::UNSEALED,
+                    ),
+                    true,
+                ),
+                false,
+            ),
+        ] {
+            let unsealed = cap.unseal(unsealer);
+            _ = dbg!(cap, unsealer, expect_ok, unsealed);
+            assert_eq!(unsealed.is_valid(), expect_ok);
+            if expect_ok {
+                assert!(unsealed.otype().is_unsealed());
+            }
+        }
+    }
 }
