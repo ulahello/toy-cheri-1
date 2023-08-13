@@ -588,7 +588,7 @@ impl Permissions {
 }
 
 impl Ty for Permissions {
-    const LAYOUT: Layout = u16::LAYOUT;
+    const LAYOUT: Layout = u8::LAYOUT;
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
         Ok(Self::from_bits_truncate(u8::read(src, addr, valid)?))
