@@ -176,6 +176,8 @@ impl Ty for Header {
     }
 }
 
+// TODO: what if userspace causes unsealing of non-allocator capability?
+
 fn magic_seal(cap: TaggedCapability) -> TaggedCapability {
     cap.seal(cap.set_perms(cap.perms() | Permissions::SEAL))
 }
