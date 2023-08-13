@@ -374,7 +374,6 @@ impl TaggedCapability {
         self.capa.otype()
     }
 
-    #[must_use]
     pub const fn seal(mut self, with: Self) -> Self {
         let mut valid = self.is_valid()
             && self.otype().is_unsealed()
@@ -391,7 +390,6 @@ impl TaggedCapability {
         self
     }
 
-    #[must_use]
     pub const fn unseal(mut self, with: Self) -> Self {
         self.valid = self.is_valid()
             && self.otype().is_sealed()
