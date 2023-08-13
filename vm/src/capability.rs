@@ -344,11 +344,6 @@ impl TaggedCapability {
     }
 
     pub const fn set_perms(self, perms: Permissions) -> Self {
-        // new perms are valid if they at most disable a permission.
-        let valid_is_valid = self.otype().is_unsealed()
-            && (!perms.x() || self.capa.perms.x())
-            && (!perms.w() || self.capa.perms.w())
-            && (!perms.r() || self.capa.perms.r());
         Self {
             capa: Capability {
                 addr: self.capa.addr,
@@ -357,7 +352,7 @@ impl TaggedCapability {
                 perms,
                 otype: self.capa.otype,
             },
-            valid: self.is_valid() && valid_is_valid,
+            valid: self.is_valid() && self.otype().is_unsealed() && self.perms().contains(perms),
         }
     }
 
@@ -580,23 +575,11 @@ bitflags! {
 impl Permissions {
     pub const BITS: u8 = 8;
 
-    pub const fn r(self) -> bool {
-        self.contains(Self::READ)
-    }
-
-    pub const fn w(self) -> bool {
-        self.contains(Self::WRITE)
-    }
-
-    pub const fn x(self) -> bool {
-        self.contains(Self::EXEC)
-    }
-
     pub const fn grants_access(&self, kind: MemAccessKind) -> bool {
         match kind {
-            MemAccessKind::Read => self.r(),
-            MemAccessKind::Write => self.w(),
-            MemAccessKind::Execute => self.x(),
+            MemAccessKind::Read => self.contains(Self::READ),
+            MemAccessKind::Write => self.contains(Self::WRITE),
+            MemAccessKind::Execute => self.contains(Self::EXEC),
         }
     }
 }

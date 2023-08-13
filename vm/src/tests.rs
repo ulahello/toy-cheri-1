@@ -117,6 +117,8 @@ mod capability {
 
     #[test]
     fn set_perms() {
+        // TODO: automate
+
         let mut cap = TaggedCapability::new(
             Capability::new(
                 Address(0),
