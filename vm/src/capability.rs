@@ -494,7 +494,7 @@ impl fmt::Debug for TaggedCapability {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct OType(u8);
 
 impl OType {
@@ -549,6 +549,20 @@ impl Ty for OType {
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
         self.get().write(dst, addr, valid)
+    }
+}
+
+impl fmt::Debug for OType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut dbg = f.debug_tuple("OType");
+        if self.is_sealed() {
+            dbg.field(&self.get_addr());
+        } else {
+            #[derive(Debug)]
+            struct Unsealed;
+            dbg.field(&Unsealed);
+        }
+        dbg.finish()
     }
 }
 
