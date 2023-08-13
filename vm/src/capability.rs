@@ -622,9 +622,15 @@ impl Ty for Permissions {
 impl fmt::Display for Permissions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         const NOPE: char = '-';
-        f.write_char(if self.r() { 'r' } else { NOPE })?;
-        f.write_char(if self.w() { 'w' } else { NOPE })?;
-        f.write_char(if self.x() { 'x' } else { NOPE })?;
+        for (perm, chr) in [
+            (Permissions::READ, 'r'),
+            (Permissions::WRITE, 'w'),
+            (Permissions::EXEC, 'x'),
+            (Permissions::SEAL, 's'),
+            (Permissions::UNSEAL, 'u'),
+        ] {
+            f.write_char(if self.contains(perm) { chr } else { NOPE })?;
+        }
         Ok(())
     }
 }
