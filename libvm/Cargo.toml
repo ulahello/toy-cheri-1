@@ -1,0 +1,15 @@
+[package]
+name = "fruticose-vm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1.0.72"
+bitflags = "2.3.3"
+bitvec = "1.0.1"
+tracing = "0.1.37"
+
+[dev-dependencies]
+nanorand = { version = "0.7.0", default-features = false, features = ["pcg64"] }
+fruticose-asm = { path = "../libasm" }

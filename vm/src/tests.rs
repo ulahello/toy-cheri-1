@@ -1,409 +1,152 @@
-mod serde {
-    use crate::capability::{Address, Capability, OType, Permissions};
-    use crate::int::UGran;
-    use nanorand::{Pcg64, Rng};
+use fruticose_vm::int::UGran;
+
+mod rt {
+    use fruticose_vm::abi::Ty;
+    use fruticose_vm::alloc;
+    use fruticose_vm::capability::TaggedCapability;
+    use fruticose_vm::exception::Exception;
+    use fruticose_vm::mem::Memory;
+    use fruticose_vm::registers::Register;
 
     #[test]
-    fn capability() {
-        const ROUNDS: u32 = 1_000;
-        let mut rng = Pcg64::new_seed(123456789);
-        for _ in 0..ROUNDS {
-            // fields individually generated
-            {
-                let addr = Address(rng.generate());
-                let start = Address(rng.generate());
-                let endb = Address(rng.generate());
-                let perms = Permissions::from_bits_truncate(rng.generate());
-                let otype = OType::new(rng.generate());
-                let cap = Capability::new(addr, start, endb, perms, otype);
-                assert_eq!(cap, Capability::from_ugran(cap.to_ugran()));
-            }
-
-            // ugran randomly generated
-            {
-                let ugran: UGran = rng.generate();
-                assert_eq!(ugran, Capability::from_ugran(ugran).to_ugran());
-            }
-        }
-    }
-}
-
-mod revoke {
-    use crate::abi::{Align, Layout};
-    use crate::mem::Memory;
-    use crate::registers::Register;
-    use crate::{alloc, revoke};
-
-    #[test]
-    fn endb_is_harmless() -> anyhow::Result<()> {
-        let mut mem = Memory::new(16, 0, [].iter())?;
-        let root_cap = mem.regs.read(&mem.tags, Register::Z0 as _)?;
-        let ation = alloc::alloc(
-            root_cap,
-            Layout {
-                size: 8,
-                align: Align::new(1).unwrap(),
-            },
-            &mut mem,
-        )?;
-        mem.regs.write(&mut mem.tags, Register::T0 as _, ation)?;
-        revoke::by_bounds(&mut mem, ation.endb(), ation.endb().add(1))?;
-        revoke::by_bounds(&mut mem, ation.start().sub(1), ation.start())?;
-        let new_ation = mem.regs.read(&mem.tags, Register::T0 as _)?;
-        assert!(new_ation.is_valid());
+    fn invalidate_cap() -> Result<(), Exception> {
+        let mut mem = Memory::new(32, 0, [].iter()).unwrap();
+        let root_alloc = mem.regs.read(&mem.tags, Register::Z0 as _)?;
+        let ation = alloc::alloc(root_alloc, TaggedCapability::LAYOUT, &mut mem)?;
+        mem.write(ation, ation)?;
+        let expanded = ation.set_bounds(ation.start(), ation.endb().add(1));
+        mem.write(ation, expanded)?;
+        let result: TaggedCapability = mem.read(ation)?;
+        assert!(!result.is_valid());
         Ok(())
     }
 }
 
-mod capability {
-    use crate::abi::Align;
-    use crate::access::MemAccessKind;
-    use crate::capability::{Address, Capability, OType, Permissions, TaggedCapability};
+mod exec {
+    use fruticose_asm::parse1::ParseErr;
+    use fruticose_asm::parse2::Parser2;
+    use fruticose_vm::capability::TaggedCapability;
+    use fruticose_vm::exception::Exception;
+    use fruticose_vm::mem::Memory;
+    use fruticose_vm::op::Op;
+    use fruticose_vm::registers::Register;
 
-    #[test]
-    fn is_bounded() {
-        let normal = Capability::new(
-            Address(8),
-            Address(0),
-            Address(16),
-            Permissions::empty(),
-            OType::UNSEALED,
-        );
-        assert!(normal.is_bounded_with_len(0));
-        assert!(normal.is_bounded_with_len(8));
-        assert!(!normal.is_bounded_with_len(9));
-        assert!(!normal.is_bounded_with_len(18));
+    const ADD: &str = include_str!("../../libasm/examples/add.asm");
+    const CMP: &str = include_str!("../../libasm/examples/cmp.asm");
+    const JMP_BACK: &str = include_str!("../../libasm/examples/jmp-back.asm");
+    const FIB_REC: &str = include_str!("../../libasm/examples/fibonacci-recursive.asm");
+    const FIB_ITER: &str = include_str!("../../libasm/examples/fibonacci-iter.asm");
 
-        let reverse = Capability::new(
-            Address(8),
-            Address(16),
-            Address(0),
-            Permissions::empty(),
-            OType::UNSEALED,
-        );
-        assert!(!reverse.is_bounded_with_len(0));
-        assert!(!reverse.is_bounded_with_len(8));
-        assert!(!reverse.is_bounded_with_len(9));
-        assert!(!reverse.is_bounded_with_len(18));
-
-        let eq = Capability::new(
-            Address(16),
-            Address(0),
-            Address(16),
-            Permissions::empty(),
-            OType::UNSEALED,
-        );
-        assert!(eq.is_bounded_with_len(0));
-        assert!(!eq.is_bounded_with_len(8));
-        assert!(!eq.is_bounded_with_len(9));
-        assert!(!eq.is_bounded_with_len(18));
-
-        let oob_right = normal.set_addr(Address(32));
-        assert!(!oob_right.is_bounded_with_len(0));
-        assert!(!oob_right.is_bounded_with_len(8));
-        assert!(!oob_right.is_bounded_with_len(9));
-        assert!(!oob_right.is_bounded_with_len(18));
-
-        let oob_left = Capability::new(
-            Address(0),
-            Address(16),
-            Address(32),
-            Permissions::empty(),
-            OType::UNSEALED,
-        );
-        assert!(!oob_left.is_bounded_with_len(0));
-        assert!(!oob_left.is_bounded_with_len(8));
-        assert!(!oob_left.is_bounded_with_len(9));
-        assert!(!oob_left.is_bounded_with_len(18));
+    fn assemble(src: &str) -> Result<Vec<Op>, ParseErr> {
+        let ops = Parser2::new(src)
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ops)
     }
 
-    #[test]
-    fn set_perms() {
-        // TODO: automate
-
-        let mut cap = TaggedCapability::new(
-            Capability::new(
-                Address(0),
-                Address(0),
-                Address(16),
-                Permissions::all(),
-                OType::UNSEALED,
-            ),
-            true,
-        );
-
-        assert!(cap.set_perms(Permissions::READ).is_valid());
-        assert!(cap.set_perms(Permissions::WRITE).is_valid());
-        assert!(cap.set_perms(Permissions::EXEC).is_valid());
-        assert!(cap
-            .set_perms(Permissions::READ | Permissions::WRITE)
-            .is_valid());
-        assert!(cap
-            .set_perms(Permissions::READ | Permissions::EXEC)
-            .is_valid());
-        assert!(cap
-            .set_perms(Permissions::WRITE | Permissions::EXEC)
-            .is_valid());
-        assert!(cap.set_perms(Permissions::all()).is_valid());
-
-        cap = cap.set_perms(Permissions::READ | Permissions::EXEC);
-
-        assert!(cap.set_perms(Permissions::READ).is_valid());
-        assert!(!cap.set_perms(Permissions::WRITE).is_valid());
-        assert!(cap.set_perms(Permissions::EXEC).is_valid());
-        assert!(!cap
-            .set_perms(Permissions::READ | Permissions::WRITE)
-            .is_valid());
-        assert!(cap
-            .set_perms(Permissions::READ | Permissions::EXEC)
-            .is_valid());
-        assert!(!cap
-            .set_perms(Permissions::WRITE | Permissions::EXEC)
-            .is_valid());
-        assert!(!cap.set_perms(Permissions::all()).is_valid());
-    }
-
-    #[test]
-    fn set_bounds() {
-        let cap = TaggedCapability::new(
-            Capability::new(
-                Address(8),
-                Address(8),
-                Address(16),
-                Permissions::all(),
-                OType::UNSEALED,
-            ),
-            true,
-        );
-        assert!(cap.set_bounds(Address(8), Address(16)).is_valid());
-        assert!(cap.set_bounds(Address(9), Address(10)).is_valid());
-        assert!(!cap.set_bounds(Address(7), Address(15)).is_valid());
-        assert!(!cap.set_bounds(Address(9), Address(17)).is_valid());
-        assert!(!cap.set_bounds(Address(0), Address(2)).is_valid());
-        assert!(cap.set_bounds(Address(16), Address(16)).is_valid());
-        assert!(!cap.set_bounds(Address(16), Address(17)).is_valid());
-        assert!(!cap.set_bounds(Address(16), Address(8)).is_valid());
-    }
-
-    #[test]
-    fn seal() {
-        for (cap, sealer, expect_ok) in [
-            (
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(0),
-                        Address(0),
-                        Address(16),
-                        Permissions::READ | Permissions::WRITE,
-                        OType::UNSEALED,
-                    ),
-                    true,
-                ),
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(256),
-                        Address(256),
-                        Address(320),
-                        Permissions::SEAL,
-                        OType::UNSEALED,
-                    ),
-                    true,
-                ),
-                true,
-            ),
-            (
-                TaggedCapability::INVALID,
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(256),
-                        Address(256),
-                        Address(320),
-                        Permissions::SEAL,
-                        OType::UNSEALED,
-                    ),
-                    true,
-                ),
-                false,
-            ),
-            (
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(0),
-                        Address(0),
-                        Address(16),
-                        Permissions::all(),
-                        OType::UNSEALED,
-                    ),
-                    true,
-                ),
-                TaggedCapability::INVALID,
-                false,
-            ),
-            (
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(0),
-                        Address(0),
-                        Address(16),
-                        Permissions::READ | Permissions::WRITE,
-                        OType::UNSEALED,
-                    ),
-                    true,
-                ),
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(64), // not aligned to OType::VALID_ALIGN
-                        Address(128),
-                        Address(128),
-                        Permissions::SEAL,
-                        OType::UNSEALED,
-                    ),
-                    true,
-                ),
-                false,
-            ),
-        ] {
-            let sealed = cap.seal(sealer);
-            _ = dbg!(cap, sealer, expect_ok, sealed);
-            assert_eq!(sealed.is_valid(), expect_ok);
-            if expect_ok {
-                assert!(sealed.otype().is_sealed());
+    fn exec(mem: &mut Memory) -> Result<(), Exception> {
+        loop {
+            match mem.execute_next() {
+                Ok(()) => (),
+                Err(err) => match err {
+                    Exception::ProcessExit => break Ok(()),
+                    _ => return Err(err),
+                },
             }
         }
     }
 
+    #[track_caller]
+    fn expect_in_reg(mem: &mut Memory, reg: Register, tcap: TaggedCapability) {
+        let val = mem.regs.read(&mut mem.tags, reg as _).unwrap();
+        assert_eq!(val, tcap);
+    }
+
     #[test]
-    fn unseal() {
-        for (cap, unsealer, expect_ok) in [
-            (
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(0),
-                        Address(0),
-                        Address(16),
-                        Permissions::READ | Permissions::WRITE,
-                        OType::from_addr(Address(256)).unwrap(),
-                    ),
-                    true,
-                ),
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(256),
-                        Address(256),
-                        Address(320),
-                        Permissions::UNSEAL,
-                        OType::UNSEALED,
-                    ),
-                    true,
-                ),
-                true,
-            ),
-            (
-                TaggedCapability::INVALID,
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(256),
-                        Address(256),
-                        Address(320),
-                        Permissions::UNSEAL,
-                        OType::UNSEALED,
-                    ),
-                    true,
-                ),
-                false,
-            ),
-            (
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(0),
-                        Address(0),
-                        Address(16),
-                        Permissions::all(),
-                        OType::UNSEALED,
-                    ),
-                    true,
-                ),
-                TaggedCapability::INVALID,
-                false,
-            ),
-            (
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(0),
-                        Address(0),
-                        Address(16),
-                        Permissions::READ | Permissions::WRITE,
-                        OType::from_addr(Address(256)).unwrap(),
-                    ),
-                    true,
-                ),
-                TaggedCapability::new(
-                    Capability::new(
-                        Address(64), // not aligned to OType::VALID_ALIGN
-                        Address(128),
-                        Address(128),
-                        Permissions::SEAL,
-                        OType::UNSEALED,
-                    ),
-                    true,
-                ),
-                false,
-            ),
-        ] {
-            let unsealed = cap.unseal(unsealer);
-            _ = dbg!(cap, unsealer, expect_ok, unsealed);
-            assert_eq!(unsealed.is_valid(), expect_ok);
-            if expect_ok {
-                assert!(unsealed.otype().is_unsealed());
-            }
+    fn add() {
+        let ops = assemble(ADD).unwrap();
+        let mut mem = Memory::new(32, 0, ops.iter()).unwrap();
+        drop(ops);
+        exec(&mut mem).unwrap();
+        expect_in_reg(&mut mem, Register::T1, TaggedCapability::from_ugran(23));
+        expect_in_reg(&mut mem, Register::T2, TaggedCapability::from_ugran(47));
+        expect_in_reg(&mut mem, Register::T0, TaggedCapability::from_ugran(71));
+    }
+
+    #[test]
+    fn cmp() {
+        let ops = assemble(CMP).unwrap();
+        let mut mem = Memory::new(64, 0, ops.iter()).unwrap();
+        drop(ops);
+        exec(&mut mem).unwrap();
+        expect_in_reg(&mut mem, Register::T1, TaggedCapability::from_ugran(47));
+        expect_in_reg(&mut mem, Register::T2, TaggedCapability::from_ugran(48));
+        expect_in_reg(&mut mem, Register::T0, TaggedCapability::from_ugran(1));
+    }
+
+    #[test]
+    fn jmp_back() {
+        let ops = assemble(JMP_BACK).unwrap();
+        let mut mem = Memory::new(32, 0, ops.iter()).unwrap();
+        drop(ops);
+        exec(&mut mem).unwrap();
+        expect_in_reg(&mut mem, Register::T0, TaggedCapability::from_ugran(53));
+    }
+
+    #[test]
+    fn fibonacci_iter() -> Result<(), Exception> {
+        let ops = assemble(FIB_ITER).unwrap();
+        let mut mem = Memory::new(1024, 1024, ops.iter()).unwrap();
+        let pc = mem.regs.read(&mem.tags, Register::Pc as _)?;
+        for n in 0..94 {
+            println!("fib(n = {n})");
+            mem.regs.write(&mut mem.tags, Register::Pc as _, pc)?; // reset execution
+            mem.regs.write_data(&mut mem.tags, Register::A2 as _, n)?;
+            exec(&mut mem).unwrap();
+            expect_in_reg(
+                &mut mem,
+                Register::A0,
+                TaggedCapability::from_ugran(super::fib(n)),
+            );
         }
+
+        Ok(())
     }
 
     #[test]
-    fn mutate_sealed() {
-        let sealed = TaggedCapability::new(
-            Capability::new(
-                Address(0),
-                Address(0),
-                Address(16),
-                Permissions::READ | Permissions::WRITE,
-                OType::from_addr(Address(256)).unwrap(),
-            ),
-            true,
-        );
-        assert!(!sealed.set_addr(Address(2)).is_valid());
-        assert!(!sealed.set_perms(Permissions::empty()).is_valid());
-        assert!(!sealed.set_bounds(sealed.start(), sealed.endb()).is_valid());
-    }
+    fn fibonacci_recursive() -> Result<(), Exception> {
+        let ops = assemble(FIB_REC).unwrap();
+        let mut mem = Memory::new(1024, 1024, ops.iter()).unwrap();
+        let pc = mem.regs.read(&mem.tags, Register::Pc as _)?;
+        for n in 0..10 {
+            println!("fib(n = {n})");
+            mem.regs.write(&mut mem.tags, Register::Pc as _, pc)?; // reset execution
+            mem.regs.write_data(&mut mem.tags, Register::A2 as _, n)?;
+            exec(&mut mem).unwrap();
+            expect_in_reg(
+                &mut mem,
+                Register::A0,
+                TaggedCapability::from_ugran(super::fib(n)),
+            );
+        }
 
-    #[test]
-    fn use_sealed() {
-        let sealed = TaggedCapability::new(
-            Capability::new(
-                Address(0),
-                Address(0),
-                Address(16),
-                Permissions::READ | Permissions::WRITE,
-                OType::from_addr(Address(256)).unwrap(),
-            ),
-            true,
-        );
-        let access = |cap: TaggedCapability| {
-            cap.check_access(MemAccessKind::Read, Align::new(1).unwrap(), Some(16))
-        };
-        assert!(access(sealed).is_err());
-        let unsealed = sealed.unseal(TaggedCapability::new(
-            Capability::new(
-                Address(256),
-                Address(256),
-                Address(512),
-                Permissions::UNSEAL,
-                OType::UNSEALED,
-            ),
-            true,
-        ));
-        assert!(unsealed.is_valid());
-        assert!(unsealed.otype().is_unsealed());
-        assert!(access(unsealed).is_ok());
+        Ok(())
     }
+}
+
+fn fib(n: UGran) -> UGran {
+    let mut f2 = 0;
+    if n == 0 {
+        return f2;
+    };
+    let mut f1 = 1;
+    let mut f;
+    for _ in 2..=n {
+        f = f2
+            .checked_add(f1)
+            .expect("nth fibonacci mustn't overflow UGran");
+        f2 = f1;
+        f1 = f;
+    }
+    return f1;
 }

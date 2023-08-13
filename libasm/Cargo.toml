@@ -7,4 +7,4 @@ publish = false
 [dependencies]
 unicode-segmentation = "1.10.1"
 
-fruticose-vm = { path = "../vm"}
+fruticose-vm = { path = "../libvm"}

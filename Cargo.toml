@@ -1,8 +1,8 @@
 [workspace]
 members = [
+	"libvm",
 	"vm",
-	"vm-driver",
-	"asm",
+	"libasm",
 ]
 
 [profile.release]
