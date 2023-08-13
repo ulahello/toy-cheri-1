@@ -264,6 +264,9 @@ mod capability {
             let sealed = cap.seal(sealer);
             _ = dbg!(cap, sealer, expect_ok, sealed);
             assert_eq!(sealed.is_valid(), expect_ok);
+            if expect_ok {
+                assert!(sealed.otype().is_sealed());
+            }
         }
     }
 }
