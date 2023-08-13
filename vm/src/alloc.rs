@@ -199,7 +199,7 @@ pub fn init(
     let region = region.set_addr(region.start()); // reset address to region start
     region.check_access(
         MemAccessKind::Write,
-        Align::new(OType::GRANULARITY).unwrap(),
+        OType::VALID_ALIGN,
         Some(region.span_len()),
     )?;
 

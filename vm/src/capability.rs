@@ -493,9 +493,12 @@ impl fmt::Debug for TaggedCapability {
 pub struct OType(u8);
 
 impl OType {
-    pub const GRANULARITY: UAddr = (2 as UAddr).pow(Self::BITS as _);
-
     pub const BITS: u8 = 8;
+
+    /// Addresses with this alignment are representable as object types.
+    pub const VALID_ALIGN: Align = Align::from_repr(Address::BITS - Self::BITS).unwrap();
+
+    const GRANULARITY: Align = Align::from_repr(Self::BITS as _).unwrap();
 
     pub const UNSEALED: Self = Self(u8::MAX);
 
@@ -504,10 +507,8 @@ impl OType {
     }
 
     pub const fn try_new(addr: Address) -> Option<Self> {
-        if addr
-            .is_aligned_to(Align::new((2 as UAddr).pow((Address::BITS - Self::BITS) as _)).unwrap())
-        {
-            Some(Self::new((addr.get() / Self::GRANULARITY) as u8))
+        if addr.is_aligned_to(Self::VALID_ALIGN) {
+            Some(Self::new((addr.get() / Self::GRANULARITY.get()) as u8))
         } else {
             None
         }
@@ -518,7 +519,7 @@ impl OType {
     }
 
     pub const fn get_addr(self) -> Address {
-        Address(self.get() as UAddr * Self::GRANULARITY)
+        Address(self.get() as UAddr * Self::GRANULARITY.get())
     }
 
     pub const fn is_sealed(self) -> bool {

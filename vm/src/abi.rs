@@ -19,6 +19,14 @@ pub struct Align(u8 /* must be less than UAddr::BITS */);
 impl Align {
     pub const MIN: Self = Self::new(1).unwrap();
 
+    pub const fn from_repr(repr: u8) -> Option<Self> {
+        if repr < UAddr::BITS as _ {
+            Some(Self(repr))
+        } else {
+            None
+        }
+    }
+
     pub const fn new(align: UAddr) -> Option<Self> {
         // power of two implies nonzero
         if align.is_power_of_two() {
