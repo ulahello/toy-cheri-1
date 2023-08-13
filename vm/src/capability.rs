@@ -376,7 +376,7 @@ impl TaggedCapability {
             && with.otype().is_unsealed()
             && with.is_bounded()
             && with.perms().contains(Permissions::SEAL);
-        if let Some(otype) = OType::try_new(with.addr()) {
+        if let Some(otype) = OType::from_addr(with.addr()) {
             self.capa.otype = otype;
         } else {
             valid &= false;
@@ -506,7 +506,7 @@ impl OType {
         Self(repr)
     }
 
-    pub const fn try_new(addr: Address) -> Option<Self> {
+    pub const fn from_addr(addr: Address) -> Option<Self> {
         if addr.is_aligned_to(Self::VALID_ALIGN) {
             Some(Self::new((addr.get() / Self::ALIGNED_COUNT.get()) as u8))
         } else {
