@@ -9,8 +9,6 @@ use crate::access::{MemAccess, MemAccessKind};
 use crate::exception::Exception;
 use crate::int::{gran_sign, SAddr, UAddr, UGran, UGRAN_SIZE, UNINIT};
 
-/* TODOOO: implement sealed capabilities using metadata */
-
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct Address(pub UAddr);
@@ -127,6 +125,7 @@ pub struct Capability {
     start: Address,
     endb: Address,
     perms: Permissions,
+    otype: OType,
 }
 
 impl Capability {
@@ -137,15 +136,23 @@ impl Capability {
             start: LITERALLY_ANY_ADDRESS,
             endb: LITERALLY_ANY_ADDRESS,
             perms: Permissions::empty(),
+            otype: OType::UNSEALED,
         }
     };
 
-    pub const fn new(addr: Address, start: Address, endb: Address, perms: Permissions) -> Self {
+    pub const fn new(
+        addr: Address,
+        start: Address,
+        endb: Address,
+        perms: Permissions,
+        otype: OType,
+    ) -> Self {
         Self {
             addr,
             start,
             endb,
             perms,
+            otype,
         }
     }
 
@@ -172,6 +179,10 @@ impl Capability {
                     & (UGran::MAX >> (UGran::BITS - Permissions::BITS as u32)))
                     as _,
             ),
+            otype: OType::new(
+                ((ugran >> (Address::BITS * 3 + Permissions::BITS))
+                    & (UGran::MAX >> (UGran::BITS - OType::BITS as u32))) as _,
+            ),
         }
     }
 
@@ -181,6 +192,7 @@ impl Capability {
             | (self.start.get() as UGran) << (Address::BITS * 1)
             | (self.endb.get() as UGran) << (Address::BITS * 2)
             | (self.perms.bits() as UGran) << (Address::BITS * 3)
+            | (self.otype.get() as UGran) << (Address::BITS * 3 + Permissions::BITS)
     }
 
     pub const fn addr(self) -> Address {
@@ -190,9 +202,6 @@ impl Capability {
     #[must_use]
     pub const fn set_addr(mut self, new: Address) -> Self {
         self.addr = new;
-        /* we don't check bounds and update `valid` here because that's expected
-         * to be checked for every access. we only do that for changing the
-         * bounds. */
         self
     }
 
@@ -206,6 +215,10 @@ impl Capability {
 
     pub const fn perms(self) -> Permissions {
         self.perms
+    }
+
+    pub const fn otype(self) -> OType {
+        self.otype
     }
 
     pub const fn span_len(&self) -> UAddr {
@@ -296,7 +309,7 @@ impl TaggedCapability {
     pub const fn set_addr(self, new: Address) -> Self {
         Self {
             capa: self.capa.set_addr(new),
-            valid: self.valid,
+            valid: self.valid && self.otype().is_unsealed(),
         }
     }
 
@@ -310,7 +323,8 @@ impl TaggedCapability {
 
     pub const fn set_bounds(self, start: Address, endb: Address) -> Self {
         // HACK: address should be const comparable
-        let valid = start.get() >= self.start().get()
+        let valid = self.otype().is_unsealed()
+            && start.get() >= self.start().get()
             && endb.get() <= self.endb().get()
             && start.get() <= endb.get();
         Self {
@@ -319,6 +333,7 @@ impl TaggedCapability {
                 start,
                 endb,
                 perms: self.perms(),
+                otype: self.otype(),
             },
             valid,
         }
@@ -330,7 +345,8 @@ impl TaggedCapability {
 
     pub const fn set_perms(self, perms: Permissions) -> Self {
         // new perms are valid if they at most disable a permission.
-        let valid_is_valid = (!perms.x() || self.capa.perms.x())
+        let valid_is_valid = self.otype().is_unsealed()
+            && (!perms.x() || self.capa.perms.x())
             && (!perms.w() || self.capa.perms.w())
             && (!perms.r() || self.capa.perms.r());
         Self {
@@ -339,6 +355,7 @@ impl TaggedCapability {
                 start: self.capa.start,
                 endb: self.capa.endb,
                 perms,
+                otype: self.capa.otype,
             },
             valid: self.is_valid() && valid_is_valid,
         }
@@ -353,6 +370,40 @@ impl TaggedCapability {
         root
     }
 
+    pub const fn otype(self) -> OType {
+        self.capa.otype()
+    }
+
+    #[must_use]
+    pub const fn seal(mut self, with: Self) -> Self {
+        let mut valid = self.is_valid()
+            && self.otype().is_unsealed()
+            && with.is_valid()
+            && with.otype().is_unsealed()
+            && with.is_bounded()
+            && with.perms().contains(Permissions::SEAL);
+        if let Some(otype) = OType::try_new(with.addr()) {
+            self.capa.otype = otype;
+        } else {
+            valid &= false;
+        }
+        self.valid = valid;
+        self
+    }
+
+    #[must_use]
+    pub const fn unseal(mut self, with: Self) -> Self {
+        self.valid = self.is_valid()
+            && self.otype().is_sealed()
+            && with.is_valid()
+            && with.otype().is_unsealed()
+            && with.is_bounded()
+            && with.perms().contains(Permissions::UNSEAL)
+            && self.otype().get_addr().get() == with.addr().get();
+        self.capa.otype = OType::UNSEALED;
+        self
+    }
+
     pub const fn span_len(&self) -> UAddr {
         self.capa.span_len()
     }
@@ -365,9 +416,9 @@ impl TaggedCapability {
         self.capa.is_bounded_with_len(len)
     }
 
-    pub const fn access(&self, kind: MemAccessKind, align: Align, len: Option<UAddr>) -> MemAccess {
+    pub const fn access(self, kind: MemAccessKind, align: Align, len: Option<UAddr>) -> MemAccess {
         MemAccess {
-            tcap: *self,
+            tcap: self,
             len,
             align,
             kind,
@@ -375,7 +426,12 @@ impl TaggedCapability {
     }
 
     pub const fn check_given_access(&self, access: MemAccess) -> Result<(), Exception> {
-        if self.is_valid() && access.is_bounded() && access.perms_grant() && access.is_aligned() {
+        if self.is_valid()
+            && self.otype().is_unsealed()
+            && access.is_bounded()
+            && access.perms_grant()
+            && access.is_aligned()
+        {
             Ok(())
         } else {
             Err(Exception::InvalidMemAccess { access })
@@ -426,6 +482,7 @@ impl fmt::Debug for TaggedCapability {
                 .field("start", &self.start())
                 .field("endb", &self.endb())
                 .field("perms", &self.perms())
+                .field("otype", &self.otype())
                 .finish()
         } else {
             let u = self.to_ugran();
@@ -439,17 +496,77 @@ impl fmt::Debug for TaggedCapability {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OType(u8);
+
+impl OType {
+    pub const GRANULARITY: UAddr = (2 as UAddr).pow(Self::BITS as _);
+
+    pub const BITS: u8 = 8;
+
+    pub const UNSEALED: Self = Self(u8::MAX);
+
+    pub const fn new(repr: u8) -> Self {
+        Self(repr)
+    }
+
+    pub const fn try_new(addr: Address) -> Option<Self> {
+        if addr
+            .is_aligned_to(Align::new((2 as UAddr).pow((Address::BITS - Self::BITS) as _)).unwrap())
+        {
+            Some(Self::new((addr.get() / Self::GRANULARITY) as u8))
+        } else {
+            None
+        }
+    }
+
+    pub const fn get(self) -> u8 {
+        self.0
+    }
+
+    pub const fn get_addr(self) -> Address {
+        Address(self.get() as UAddr * Self::GRANULARITY)
+    }
+
+    pub const fn is_sealed(self) -> bool {
+        !self.is_unsealed()
+    }
+
+    pub const fn is_unsealed(self) -> bool {
+        self.get() == Self::UNSEALED.get()
+    }
+}
+
+impl Ty for OType {
+    const LAYOUT: Layout = u8::LAYOUT;
+
+    fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
+        Ok(Self::new(u8::read(src, addr, valid)?))
+    }
+
+    fn write(
+        self,
+        dst: &mut [u8],
+        addr: Address,
+        valid: &mut BitSlice<u8>,
+    ) -> Result<(), Exception> {
+        self.get().write(dst, addr, valid)
+    }
+}
+
 bitflags! {
     #[derive(Clone, Copy, PartialEq, Eq)]
-    pub struct Permissions: u16 {
+    pub struct Permissions: u8 {
         const READ = 0b00000001;
         const WRITE = 0b00000010;
         const EXEC = 0b00000100;
+        const SEAL = 0b00001000;
+        const UNSEAL = 0b00010000;
     }
 }
 
 impl Permissions {
-    pub const BITS: u8 = 16;
+    pub const BITS: u8 = 8;
 
     pub const fn r(self) -> bool {
         self.contains(Self::READ)
@@ -476,7 +593,7 @@ impl Ty for Permissions {
     const LAYOUT: Layout = u16::LAYOUT;
 
     fn read(src: &[u8], addr: Address, valid: &BitSlice<u8>) -> Result<Self, Exception> {
-        Ok(Self::from_bits_truncate(u16::read(src, addr, valid)?))
+        Ok(Self::from_bits_truncate(u8::read(src, addr, valid)?))
     }
 
     fn write(
@@ -485,7 +602,7 @@ impl Ty for Permissions {
         addr: Address,
         valid: &mut BitSlice<u8>,
     ) -> Result<(), Exception> {
-        let repr: u16 = self.bits();
+        let repr: u8 = self.bits();
         repr.write(dst, addr, valid)
     }
 }

@@ -12,9 +12,13 @@ use crate::exception::Exception;
 #[repr(u8)]
 /// Enumeration over all operations.
 pub enum OpKind {
+    /// Place the value 1 in register `op1` if the capability at register `op2`
+    /// is valid, else place 0.
+    CGetValid,
+
     /// Load the address value from the capability at register `op2` and store
     /// it in register `op1`.
-    CGetAddr = 1,
+    CGetAddr,
 
     /// Assign the address value at register `op2` to the capability in register
     /// `op1`.
@@ -38,9 +42,17 @@ pub enum OpKind {
     /// permissions, the capability will be invalidated.
     CSetPerm,
 
-    /// Place the value 1 in register `op1` if the capability at register `op2`
-    /// is valid, else place 0.
-    CGetValid,
+    /// Load the object type from the capability at register `op2` and store it
+    /// in register `op1`.
+    CGetType,
+
+    /// Seal the unsealed capability at register `op2` using the sealing
+    /// capability at register `op3` and place the result in register `op1`.
+    CSeal,
+
+    /// Unseal the sealed capability at register `op2` using the unsealing
+    /// capability at register `op3` and place the result in register `op1`.
+    CUnseal,
 
     /// Load capability from register `op2` to register `op1`.
     Cpy,
@@ -239,66 +251,72 @@ impl OpKind {
 
     pub const fn from_byte(byte: u8) -> Result<Self, Exception> {
         match byte {
+            0 => Ok(Self::CGetValid),
             1 => Ok(Self::CGetAddr),
             2 => Ok(Self::CSetAddr),
             3 => Ok(Self::CGetBound),
             4 => Ok(Self::CSetBound),
             5 => Ok(Self::CGetPerm),
             6 => Ok(Self::CSetPerm),
-            7 => Ok(Self::CGetValid),
-            8 => Ok(Self::Cpy),
-            9 => Ok(Self::LoadI),
-            10 => Ok(Self::LoadU8),
-            11 => Ok(Self::LoadU16),
-            12 => Ok(Self::LoadU32),
-            13 => Ok(Self::LoadU64),
-            14 => Ok(Self::LoadC),
-            15 => Ok(Self::Store8),
-            16 => Ok(Self::Store16),
-            17 => Ok(Self::Store32),
-            18 => Ok(Self::Store64),
-            19 => Ok(Self::StoreC),
-            20 => Ok(Self::AddI),
-            21 => Ok(Self::Add),
-            22 => Ok(Self::Sub),
-            23 => Ok(Self::SltsI),
-            24 => Ok(Self::SltuI),
-            25 => Ok(Self::Slts),
-            26 => Ok(Self::Sltu),
-            27 => Ok(Self::XorI),
-            28 => Ok(Self::Xor),
-            29 => Ok(Self::OrI),
-            30 => Ok(Self::Or),
-            31 => Ok(Self::AndI),
-            32 => Ok(Self::And),
-            33 => Ok(Self::SllI),
-            34 => Ok(Self::Sll),
-            35 => Ok(Self::SrlI),
-            36 => Ok(Self::Srl),
-            37 => Ok(Self::SraI),
-            38 => Ok(Self::Sra),
-            39 => Ok(Self::Jal),
-            40 => Ok(Self::Jalr),
-            41 => Ok(Self::Beq),
-            42 => Ok(Self::Bne),
-            43 => Ok(Self::Blts),
-            44 => Ok(Self::Bges),
-            45 => Ok(Self::Bltu),
-            46 => Ok(Self::Bgeu),
-            47 => Ok(Self::Syscall),
+            7 => Ok(Self::CGetType),
+            8 => Ok(Self::CSeal),
+            9 => Ok(Self::CUnseal),
+            10 => Ok(Self::Cpy),
+            11 => Ok(Self::LoadI),
+            12 => Ok(Self::LoadU8),
+            13 => Ok(Self::LoadU16),
+            14 => Ok(Self::LoadU32),
+            15 => Ok(Self::LoadU64),
+            16 => Ok(Self::LoadC),
+            17 => Ok(Self::Store8),
+            18 => Ok(Self::Store16),
+            19 => Ok(Self::Store32),
+            20 => Ok(Self::Store64),
+            21 => Ok(Self::StoreC),
+            22 => Ok(Self::AddI),
+            23 => Ok(Self::Add),
+            24 => Ok(Self::Sub),
+            25 => Ok(Self::SltsI),
+            26 => Ok(Self::SltuI),
+            27 => Ok(Self::Slts),
+            28 => Ok(Self::Sltu),
+            29 => Ok(Self::XorI),
+            30 => Ok(Self::Xor),
+            31 => Ok(Self::OrI),
+            32 => Ok(Self::Or),
+            33 => Ok(Self::AndI),
+            34 => Ok(Self::And),
+            35 => Ok(Self::SllI),
+            36 => Ok(Self::Sll),
+            37 => Ok(Self::SrlI),
+            38 => Ok(Self::Srl),
+            39 => Ok(Self::SraI),
+            40 => Ok(Self::Sra),
+            41 => Ok(Self::Jal),
+            42 => Ok(Self::Jalr),
+            43 => Ok(Self::Beq),
+            44 => Ok(Self::Bne),
+            45 => Ok(Self::Blts),
+            46 => Ok(Self::Bges),
+            47 => Ok(Self::Bltu),
+            48 => Ok(Self::Bgeu),
+            49 => Ok(Self::Syscall),
             _ => Err(Exception::InvalidOpKind { byte }),
         }
     }
 
     pub const fn operand_count(self) -> u8 {
         match self {
+            Self::CGetValid => 2,
             Self::CGetAddr => 2,
             Self::CSetAddr => 2,
             Self::CGetBound => 3,
             Self::CSetBound => 3,
             Self::CGetPerm => 2,
             Self::CSetPerm => 2,
-            Self::CGetValid => 2,
+            Self::CGetType => 2,
+            Self::CSeal => 3,
+            Self::CUnseal => 3,
             Self::Cpy => 2,
             Self::LoadI => 2,
             Self::LoadU8 => 2,
@@ -344,13 +362,16 @@ impl OpKind {
 
     pub const fn display(self) -> &'static str {
         match self {
+            Self::CGetValid => "cgetvalid",
             Self::CGetAddr => "cgetaddr",
             Self::CSetAddr => "csetaddr",
             Self::CGetBound => "cgetbound",
             Self::CSetBound => "csetbound",
             Self::CGetPerm => "cgetperm",
             Self::CSetPerm => "csetperm",
-            Self::CGetValid => "cgetvalid",
+            Self::CGetType => "cgettype",
+            Self::CSeal => "cseal",
+            Self::CUnseal => "cunseal",
             Self::Cpy => "cpy",
             Self::LoadI => "loadi",
             Self::LoadU8 => "loadu8",
@@ -396,13 +417,16 @@ impl OpKind {
 
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
+            "cgetvalid" => Some(Self::CGetValid),
             "cgetaddr" => Some(Self::CGetAddr),
             "csetaddr" => Some(Self::CSetAddr),
             "cgetbound" => Some(Self::CGetBound),
             "csetbound" => Some(Self::CSetBound),
             "cgetperm" => Some(Self::CGetPerm),
             "csetperm" => Some(Self::CSetPerm),
-            "cgetvalid" => Some(Self::CGetValid),
+            "cgettype" => Some(Self::CGetType),
+            "cseal" => Some(Self::CSeal),
+            "cunseal" => Some(Self::CUnseal),
             "cpy" => Some(Self::Cpy),
             "loadi" => Some(Self::LoadI),
             "loadu8" => Some(Self::LoadU8),

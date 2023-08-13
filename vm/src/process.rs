@@ -63,6 +63,12 @@ impl Memory {
         tracing::trace!("executing {op}");
 
         match op.kind {
+            OpKind::CGetValid => {
+                let dst = reg(op.op1);
+                let tcap = self.regs.read(&self.tags, reg(op.op2))?;
+                self.regs.write_ty(&mut self.tags, dst, tcap.is_valid())?;
+            }
+
             OpKind::CGetAddr => {
                 let dst = reg(op.op1);
                 let tcap = self.regs.read(&self.tags, reg(op.op2))?;
@@ -112,10 +118,27 @@ impl Memory {
                 self.regs.write(&mut self.tags, tcap_reg, tcap)?;
             }
 
-            OpKind::CGetValid => {
+            OpKind::CGetType => {
                 let dst = reg(op.op1);
                 let tcap = self.regs.read(&self.tags, reg(op.op2))?;
-                self.regs.write_ty(&mut self.tags, dst, tcap.is_valid())?;
+                let otype = tcap.otype();
+                self.regs.write_ty(&mut self.tags, dst, otype)?;
+            }
+
+            OpKind::CSeal => {
+                let dst = reg(op.op1);
+                let src = self.regs.read(&self.tags, reg(op.op2))?;
+                let with = self.regs.read(&self.tags, reg(op.op3))?;
+                let sealed = src.seal(with);
+                self.regs.write(&mut self.tags, dst, sealed)?;
+            }
+
+            OpKind::CUnseal => {
+                let dst = reg(op.op1);
+                let src = self.regs.read(&self.tags, reg(op.op2))?;
+                let with = self.regs.read(&self.tags, reg(op.op3))?;
+                let unsealed = src.unseal(with);
+                self.regs.write(&mut self.tags, dst, unsealed)?;
             }
 
             OpKind::Cpy => {

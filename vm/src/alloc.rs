@@ -4,7 +4,8 @@ use bitflags::bitflags;
 use bitvec::slice::BitSlice;
 
 use crate::abi::{self, Align, CustomFields, Layout, StructMut, StructRef, Ty};
-use crate::capability::{Address, TaggedCapability};
+use crate::access::MemAccessKind;
+use crate::capability::{Address, OType, Permissions, TaggedCapability};
 use crate::exception::Exception;
 use crate::int::{UAddr, UNINIT_BYTE};
 use crate::mem::Memory;
@@ -175,6 +176,14 @@ impl Ty for Header {
     }
 }
 
+fn magic_seal(cap: TaggedCapability) -> TaggedCapability {
+    cap.seal(cap.set_perms(cap.perms() | Permissions::SEAL))
+}
+
+fn magic_unseal(cap: TaggedCapability) -> TaggedCapability {
+    cap.unseal(cap.set_perms(cap.perms() | Permissions::UNSEAL))
+}
+
 /// Initialize an allocator.
 ///
 /// Pass ownership of `region` to a new allocator with the specified
@@ -186,12 +195,19 @@ pub fn init(
     region: TaggedCapability,
     mem: &mut Memory,
 ) -> Result<TaggedCapability, Exception> {
+    // TODO: if sealed, set_addr invalidates region which leads to confusing error message
+    let region = region.set_addr(region.start()); // reset address to region start
+    region.check_access(
+        MemAccessKind::Write,
+        Align::new(OType::GRANULARITY).unwrap(),
+        Some(region.span_len()),
+    )?;
+
     /* NOTE: invalidate all capabilities matching 'region' before returning to
      * prevent caller from saving the capability and using it to mess with the
      * allocator */
     revoke::by_bounds(mem, region.start(), region.endb())?;
 
-    let region = region.set_addr(region.start()); // reset address to region start
     let mut fields = CustomFields::new(region);
     let header = Header { strat, flags };
     fields.write_next(header, mem)?;
@@ -202,6 +218,9 @@ pub fn init(
             fields.write_next(ator, mem)?;
         }
     }
+    /* NOTE: the sealing capability is not constructable by userspace because we
+     * revoke capabilities pointing into the region */
+    let region = magic_seal(region);
     Ok(region)
 }
 
@@ -210,6 +229,7 @@ pub fn init(
 /// This frees all memory allocated by the allocator and returns the original
 /// span passed to [`init`].
 pub fn deinit(ator: TaggedCapability, mem: &mut Memory) -> Result<TaggedCapability, Exception> {
+    let ator = magic_unseal(ator);
     let mut fields = CustomFields::new(ator);
     let header: Header = fields.read_next(mem)?;
     match header.strat {
@@ -232,10 +252,7 @@ pub fn alloc(
     layout: Layout,
     mem: &mut Memory,
 ) -> Result<TaggedCapability, Exception> {
-    /* TODOO: very bad things can happen if ator has been mutated (or even used)
-     * since being returned by super::init. until capabilities can be sealed
-     * (and the immutability of ator is guaranteed), this function is optimistic
-     * and undermines everything :) */
+    let ator = magic_unseal(ator);
     let mut fields = CustomFields::new(ator);
     let header: Header = fields.read_next(mem)?;
     let ation = match header.strat {
@@ -254,14 +271,16 @@ pub fn alloc(
 }
 
 pub fn free(
-    _ator: TaggedCapability,
+    ator: TaggedCapability,
     _ation: TaggedCapability,
     _mem: &mut Memory,
 ) -> Result<(), Exception> {
+    let _ator = magic_unseal(ator);
     todo!()
 }
 
 pub fn free_all(ator: TaggedCapability, mem: &mut Memory) -> Result<(), Exception> {
+    let ator = magic_unseal(ator);
     let mut fields = CustomFields::new(ator);
     let header: Header = fields.read_next(mem)?;
     match header.strat {
@@ -280,6 +299,7 @@ pub fn free_all(ator: TaggedCapability, mem: &mut Memory) -> Result<(), Exceptio
 }
 
 pub fn stat(ator: TaggedCapability, mem: &Memory) -> Result<Stats, Exception> {
+    let ator = magic_unseal(ator);
     let mut fields = CustomFields::new(ator);
     let header: Header = fields.read_next(mem)?;
     let stat = match header.strat {

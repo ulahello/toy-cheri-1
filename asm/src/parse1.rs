@@ -144,13 +144,16 @@ pub const fn type_signature(op: OpKind) -> [Option<OperandType>; 3] {
     use OperandType::*;
 
     match op {
+        OpKind::CGetValid => sig(op, [Register, Register]),
         OpKind::CGetAddr => sig(op, [Register, Register]),
         OpKind::CSetAddr => sig(op, [Register, Register]),
         OpKind::CGetBound => sig(op, [Register, Register, Register]),
         OpKind::CSetBound => sig(op, [Register, Register, Register]),
         OpKind::CGetPerm => sig(op, [Register, Register]),
         OpKind::CSetPerm => sig(op, [Register, Register]),
-        OpKind::CGetValid => sig(op, [Register, Register]),
+        OpKind::CGetType => sig(op, [Register, Register]),
+        OpKind::CSeal => sig(op, [Register, Register, Register]),
+        OpKind::CUnseal => sig(op, [Register, Register, Register]),
         OpKind::Cpy => sig(op, [Register, Register]),
         OpKind::LoadI => sig(op, [Register, Immediate]),
         OpKind::LoadU8 => sig(op, [Register, Register]),

@@ -64,6 +64,10 @@ impl fmt::Display for Exception {
                     write!(f, "data used where capability required")?;
                     return Ok(());
                 }
+                if access.tcap.otype().is_sealed() {
+                    write!(f, "sealed capabilities cannot be used")?;
+                    return Ok(());
+                }
                 if !access.is_bounded() {
                     write!(f, "access uncontained by bounds {start}..{endb}")?;
                     return Ok(());

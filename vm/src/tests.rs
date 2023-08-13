@@ -1,5 +1,5 @@
 mod serde {
-    use crate::capability::{Address, Capability, Permissions};
+    use crate::capability::{Address, Capability, OType, Permissions};
     use crate::int::UGran;
     use nanorand::{Pcg64, Rng};
 
@@ -14,7 +14,8 @@ mod serde {
                 let start = Address(rng.generate());
                 let endb = Address(rng.generate());
                 let perms = Permissions::from_bits_truncate(rng.generate());
-                let cap = Capability::new(addr, start, endb, perms);
+                let otype = OType::new(rng.generate());
+                let cap = Capability::new(addr, start, endb, perms, otype);
                 assert_eq!(cap, Capability::from_ugran(cap.to_ugran()));
             }
 
@@ -55,23 +56,41 @@ mod revoke {
 }
 
 mod capability {
-    use crate::capability::{Address, Capability, Permissions, TaggedCapability};
+    use crate::capability::{Address, Capability, OType, Permissions, TaggedCapability};
 
     #[test]
     fn is_bounded() {
-        let normal = Capability::new(Address(8), Address(0), Address(16), Permissions::empty());
+        let normal = Capability::new(
+            Address(8),
+            Address(0),
+            Address(16),
+            Permissions::empty(),
+            OType::UNSEALED,
+        );
         assert!(normal.is_bounded_with_len(0));
         assert!(normal.is_bounded_with_len(8));
         assert!(!normal.is_bounded_with_len(9));
         assert!(!normal.is_bounded_with_len(18));
 
-        let reverse = Capability::new(Address(8), Address(16), Address(0), Permissions::empty());
+        let reverse = Capability::new(
+            Address(8),
+            Address(16),
+            Address(0),
+            Permissions::empty(),
+            OType::UNSEALED,
+        );
         assert!(!reverse.is_bounded_with_len(0));
         assert!(!reverse.is_bounded_with_len(8));
         assert!(!reverse.is_bounded_with_len(9));
         assert!(!reverse.is_bounded_with_len(18));
 
-        let eq = Capability::new(Address(16), Address(0), Address(16), Permissions::empty());
+        let eq = Capability::new(
+            Address(16),
+            Address(0),
+            Address(16),
+            Permissions::empty(),
+            OType::UNSEALED,
+        );
         assert!(eq.is_bounded_with_len(0));
         assert!(!eq.is_bounded_with_len(8));
         assert!(!eq.is_bounded_with_len(9));
@@ -83,7 +102,13 @@ mod capability {
         assert!(!oob_right.is_bounded_with_len(9));
         assert!(!oob_right.is_bounded_with_len(18));
 
-        let oob_left = Capability::new(Address(0), Address(16), Address(32), Permissions::empty());
+        let oob_left = Capability::new(
+            Address(0),
+            Address(16),
+            Address(32),
+            Permissions::empty(),
+            OType::UNSEALED,
+        );
         assert!(!oob_left.is_bounded_with_len(0));
         assert!(!oob_left.is_bounded_with_len(8));
         assert!(!oob_left.is_bounded_with_len(9));
@@ -93,7 +118,13 @@ mod capability {
     #[test]
     fn set_perms() {
         let mut cap = TaggedCapability::new(
-            Capability::new(Address(0), Address(0), Address(16), Permissions::all()),
+            Capability::new(
+                Address(0),
+                Address(0),
+                Address(16),
+                Permissions::all(),
+                OType::UNSEALED,
+            ),
             true,
         );
 
@@ -131,7 +162,13 @@ mod capability {
     #[test]
     fn set_bounds() {
         let cap = TaggedCapability::new(
-            Capability::new(Address(8), Address(8), Address(16), Permissions::all()),
+            Capability::new(
+                Address(8),
+                Address(8),
+                Address(16),
+                Permissions::all(),
+                OType::UNSEALED,
+            ),
             true,
         );
         assert!(cap.set_bounds(Address(8), Address(16)).is_valid());

@@ -8,7 +8,7 @@ use tracing::{span, Level};
 use crate::abi::{self, Align, Layout, Ty};
 use crate::access::MemAccessKind;
 use crate::alloc::{self, InitFlags, Strategy};
-use crate::capability::{Address, Capability, Granule, Permissions, TaggedCapability};
+use crate::capability::{Address, Capability, Granule, OType, Permissions, TaggedCapability};
 use crate::exception::Exception;
 use crate::int::{UAddr, UGRAN_SIZE, UNINIT};
 use crate::op::Op;
@@ -80,7 +80,8 @@ impl Memory {
                 Address(0),
                 Address(0),
                 Address(UAddr::try_from(mem_len).expect("converted from UAddr to usize at start of Memory::new, so converting back to UAddr is infallible")),
-                Permissions::READ | Permissions::WRITE | Permissions::EXEC,
+                Permissions::all(),
+                OType::UNSEALED,
             ),
              true,
         );
