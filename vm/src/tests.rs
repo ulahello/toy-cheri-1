@@ -182,4 +182,88 @@ mod capability {
         assert!(!cap.set_bounds(Address(16), Address(17)).is_valid());
         assert!(!cap.set_bounds(Address(16), Address(8)).is_valid());
     }
+
+    #[test]
+    fn seal() {
+        for (cap, sealer, expect_ok) in [
+            (
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(0),
+                        Address(0),
+                        Address(16),
+                        Permissions::READ | Permissions::WRITE,
+                        OType::UNSEALED,
+                    ),
+                    true,
+                ),
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(256),
+                        Address(256),
+                        Address(320),
+                        Permissions::SEAL,
+                        OType::UNSEALED,
+                    ),
+                    true,
+                ),
+                true,
+            ),
+            (
+                TaggedCapability::INVALID,
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(256),
+                        Address(256),
+                        Address(320),
+                        Permissions::SEAL,
+                        OType::UNSEALED,
+                    ),
+                    true,
+                ),
+                false,
+            ),
+            (
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(0),
+                        Address(0),
+                        Address(16),
+                        Permissions::all(),
+                        OType::UNSEALED,
+                    ),
+                    true,
+                ),
+                TaggedCapability::INVALID,
+                false,
+            ),
+            (
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(0),
+                        Address(0),
+                        Address(16),
+                        Permissions::READ | Permissions::WRITE,
+                        OType::UNSEALED,
+                    ),
+                    true,
+                ),
+                TaggedCapability::new(
+                    Capability::new(
+                        Address(64), // not aligned to OType::VALID_ALIGN
+                        Address(128),
+                        Address(128),
+                        Permissions::SEAL,
+                        OType::UNSEALED,
+                    ),
+                    true,
+                ),
+                false,
+            ),
+        ] {
+            let sealed = cap.seal(sealer);
+            _ = dbg!(cap, sealer, expect_ok, sealed);
+            assert_eq!(sealed.is_valid(), expect_ok);
+        }
+    }
 }
