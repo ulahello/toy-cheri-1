@@ -19,7 +19,7 @@ _start:
 	jal zero, exit
 
 layout_new: ; fn(size: UAddr, align: u8) -> Layout
-	slli t0, a3, 64 ; @port
+	slli t0, a3, UADDR_BITS
 	or a0, a2, t0
 	cpy pc, ra
 

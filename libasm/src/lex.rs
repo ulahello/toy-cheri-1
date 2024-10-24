@@ -1,4 +1,4 @@
-use fruticose_vm::int::{UGran, UADDR_SIZE, UGRAN_SIZE};
+use fruticose_vm::int::{UAddr, UGran, UADDR_SIZE, UGRAN_SIZE};
 use fruticose_vm::op::OpKind;
 use fruticose_vm::registers::Register;
 use fruticose_vm::syscall::SyscallKind;
@@ -109,7 +109,9 @@ impl<'s> Lexer<'s> {
 
                 // helpful constants
                 "UGRAN_SIZE" => TokenTyp::UnsignedInt(UGRAN_SIZE.into()),
+                "UGRAN_BITS" => TokenTyp::UnsignedInt(UGran::BITS.into()),
                 "UADDR_SIZE" => TokenTyp::UnsignedInt(UADDR_SIZE.into()),
+                "UADDR_BITS" => TokenTyp::UnsignedInt(UAddr::BITS.into()),
 
                 _ => match span.parse::<UGran>() {
                     Ok(int) => TokenTyp::UnsignedInt(int),
