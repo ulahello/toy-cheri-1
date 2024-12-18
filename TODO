@@ -1,0 +1,7 @@
+TODO: set up integrated testing that verifies results of computations executed in fruticose (TODO: would be nice to send signal/interrupt at points where we want test harness to inspect memory, instead of one big test at the end)
+TODOO: have separate assembler driver
+TODOO: vm does so much! things available to userspace and internal fns should be more clearly separate, and it should be smaller. (eg, allocations & syscalls by kernel program, not vm)
+TODOO: linker so i can use asm libraries vs copy paste (overblown solution for the problem but eventually kinda necessary)
+TODOOO: processes
+TODOOO: ipc
+TODOOO: i/o
