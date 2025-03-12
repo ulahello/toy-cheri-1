@@ -2,7 +2,7 @@
 A few years ago I grew really interested in memory safe hardware and
 how a system like CHERI affects (and in some ways simplifies)
 operating system design. This is not my expertise **at all**, I'm just
-here to learn! This project is an artifact that process.
+here to learn! This project is an artifact of that process.
 
 ## What is this specifically?
 This is an emulator for a nonexistent/nonstandard ISA heavily based on
